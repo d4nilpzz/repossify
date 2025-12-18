@@ -14,6 +14,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RepositoryData {
 
+    private static final ObjectMapper mapper = new ObjectMapper();
     public String title;
     public String author;
     public String group_id;
@@ -22,37 +23,9 @@ public class RepositoryData {
     public List<Link> links;
     public List<Repository> repositories;
 
-    public static class Link {
-        public String url;
-        public String icon;
-    }
-
-    public static class Repository {
-        public String name;
-        public String path;
-        public List<TreeNode> tree;
-    }
-
-    public static class TreeNode {
-        public String type;          // "directory" or "file"
-        public String name;
-        public String path;          // relative from releases/
-        public String groupId;
-        public String artifactId;
-        public String version;
-        public Long size;
-        public List<TreeNode> children;
-    }
-
-    private static final ObjectMapper mapper = new ObjectMapper();
-
-    /* ================= PAGE ================= */
-
     public static RepositoryData loadPageConfig() throws IOException {
         return mapper.readValue(new File("./data/page.json"), RepositoryData.class);
     }
-
-    /* ================= TREE ================= */
 
     private static List<TreeNode> loadRepoTree(Path rootPath, Path currentPath, String basePath) throws IOException {
         List<TreeNode> nodes = new ArrayList<>();
@@ -93,9 +66,6 @@ public class RepositoryData {
         return nodes;
     }
 
-
-    /* ================= REPOSITORIES ================= */
-
     public static List<Repository> loadRepositories() throws IOException {
         List<Repository> repos = new ArrayList<>();
         File reposDir = new File("./data/repos");
@@ -116,5 +86,34 @@ public class RepositoryData {
         }
 
         return repos;
+    }
+
+    /* ================= PAGE ================= */
+
+    public static class Link {
+        public String url;
+        public String icon;
+    }
+
+    /* ================= TREE ================= */
+
+    public static class Repository {
+        public String name;
+        public String path;
+        public List<TreeNode> tree;
+    }
+
+
+    /* ================= REPOSITORIES ================= */
+
+    public static class TreeNode {
+        public String type;          // "directory" or "file"
+        public String name;
+        public String path;          // relative from releases/
+        public String groupId;
+        public String artifactId;
+        public String version;
+        public Long size;
+        public List<TreeNode> children;
     }
 }

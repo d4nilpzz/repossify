@@ -1,7 +1,11 @@
 package dev.d4nilpzz;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 /**
  * RepossifyInit initializes directories and copies template files

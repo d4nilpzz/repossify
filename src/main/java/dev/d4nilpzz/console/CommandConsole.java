@@ -1,8 +1,8 @@
 package dev.d4nilpzz.console;
 
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.auth.AccessToken;
+import dev.d4nilpzz.auth.TokenService;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -15,8 +15,8 @@ import java.util.logging.Logger;
 public class CommandConsole implements Runnable {
 
     private static final Logger logger = Logger.getLogger(CommandConsole.class.getName());
-    private volatile boolean running = true;
     private final TokenService tokenService;
+    private volatile boolean running = true;
 
     /**
      * Constructs a CommandConsole instance with the given TokenService.
@@ -197,7 +197,7 @@ public class CommandConsole implements Runnable {
         try {
             AccessToken token = tokenService.createToken(name, permissions, secret);
             if (!silent) {
-                System.out.println("New token for \""+name+"\" ["+secret+"] with permissions: "+permissions);
+                System.out.println("New token for \"" + name + "\" [" + secret + "] with permissions: " + permissions);
             }
         } catch (IllegalArgumentException e) {
             System.out.println("Error creating token: " + e.getMessage());

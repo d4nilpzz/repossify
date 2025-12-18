@@ -1,0 +1,10 @@
+{
+  "title": "Repossify",
+  "author": "Repossify",
+  "group_id": "com.example",
+  "description": "A powerful maven repository.",
+  "avatar_url": "/public/repossify.png",
+  "links": [
+    { "url": "https://github.com/d4nilpzz/repossify", "icon": "github" }
+  ]
+}

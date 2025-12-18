@@ -1,0 +1,14 @@
+{
+    "identifier": {
+        "id": 13,
+        "type": "PERSISTENT"
+    },
+    "name": "dani3",
+    "secret": "$2a$10$icgCt878oty.IASKtuVUb.pxAQKCQ9AtQa9tBsNwf.qxcgLKP/GIe",
+    "createdAt": "2025-12-16T08:51:58.766168900Z",
+    "description": "Generated via console",
+    "permissions": [
+        "M"
+    ],
+    "routes": []
+}

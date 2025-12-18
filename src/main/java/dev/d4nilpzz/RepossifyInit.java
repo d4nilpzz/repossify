@@ -1,14 +1,17 @@
 package dev.d4nilpzz;
 
-import java.io.*;
-import java.nio.file.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 
 /**
  * RepossifyInit initializes directories and copies template files
  * with a visible spinner for at least 2 seconds per file.
  */
 public class RepossifyInit {
-
     private static final String BASE_DIR = "./";
     private static final String[] DIRS = {"data/repos"};
     private static final String[][] FILES_TO_COPY = {

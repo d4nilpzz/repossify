@@ -2,19 +2,23 @@ package dev.d4nilpzz;
 
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
-import dev.d4nilpzz.controllers.*;
+import dev.d4nilpzz.controllers.AuthController;
+import dev.d4nilpzz.controllers.ConfigController;
+import dev.d4nilpzz.controllers.PageController;
 import dev.d4nilpzz.params.ParamParser;
 import io.javalin.Javalin;
 
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.logging.*;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 public class Repossify {
 
     public static final String VERSION = "1.0.0";
-    private static final Logger logger = Logger.getLogger("Repossify");
+    public static final Logger logger = Logger.getLogger("Repossify");
 
     static {
         ConsoleHandler handler = new ConsoleHandler();
@@ -35,6 +39,7 @@ public class Repossify {
             } else {
                 logger.warning("Properties file already exists. Initialization skipped.");
             }
+
             return;
         }
 
@@ -63,7 +68,8 @@ public class Repossify {
                     ? args.hostname
                     : cfg.get("hostname", hostname);
 
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         TokenService tokenService;
         try {

@@ -67,8 +67,8 @@ public class TokenService {
      * @param permissions list of permission strings
      * @param secret      optional secret for authentication, auto-generated if null
      * @return the created AccessToken object
-     * @throws SQLException              if a database error occurs
-     * @throws IllegalArgumentException  if a token with the same name already exists
+     * @throws SQLException             if a database error occurs
+     * @throws IllegalArgumentException if a token with the same name already exists
      */
     public AccessToken createToken(String name, List<String> permissions, String secret) throws SQLException {
         if (tokenNameExists(name)) {
@@ -130,8 +130,8 @@ public class TokenService {
      * Deletes a token by its name, including all associated permissions and routes.
      *
      * @param name token name to delete
-     * @throws SQLException              if database error occurs
-     * @throws IllegalArgumentException  if token does not exist
+     * @throws SQLException             if database error occurs
+     * @throws IllegalArgumentException if token does not exist
      */
     public void deleteTokenByName(String name) throws SQLException {
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
@@ -164,8 +164,8 @@ public class TokenService {
      *
      * @param name        token name
      * @param permissions list of new permissions
-     * @throws SQLException              if a database error occurs
-     * @throws IllegalArgumentException  if token does not exist
+     * @throws SQLException             if a database error occurs
+     * @throws IllegalArgumentException if token does not exist
      */
     public void updateTokenPermissions(String name, List<String> permissions) throws SQLException {
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
@@ -194,11 +194,12 @@ public class TokenService {
      *
      * @param oldName current token name
      * @param newName new desired token name
-     * @throws SQLException              if database error occurs
-     * @throws IllegalArgumentException  if new name already exists or old name not found
+     * @throws SQLException             if database error occurs
+     * @throws IllegalArgumentException if new name already exists or old name not found
      */
     public void renameToken(String oldName, String newName) throws SQLException {
-        if (tokenNameExists(newName)) throw new IllegalArgumentException("Token with name '" + newName + "' already exists");
+        if (tokenNameExists(newName))
+            throw new IllegalArgumentException("Token with name '" + newName + "' already exists");
 
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
             PreparedStatement ps = conn.prepareStatement("UPDATE access_tokens SET name=? WHERE name=?");
@@ -214,8 +215,8 @@ public class TokenService {
      *
      * @param name token name
      * @return newly generated secret
-     * @throws SQLException              if database error occurs
-     * @throws IllegalArgumentException  if token does not exist
+     * @throws SQLException             if database error occurs
+     * @throws IllegalArgumentException if token does not exist
      */
     public String regenerateTokenSecret(String name) throws SQLException {
         String newSecret = UUID.randomUUID().toString().replace("-", "");

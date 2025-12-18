@@ -12,16 +12,6 @@ public class AccessToken {
     public List<String> permissions; // MANAGER (m), UPLOADER (u)
     public List<Route> routes;
 
-    public static class Identifier {
-        public int id;
-        public String type;        // PERSISTENT, TEMPORARY
-    }
-
-    public static class Route {
-        public String path;
-        public String routePermission; // READ (r), WRITE (w)
-    }
-
     public AccessToken(int id, String type, String name, String secret, String description,
                        List<String> permissions, List<Route> routes) {
         this.identifier = new Identifier();
@@ -33,5 +23,15 @@ public class AccessToken {
         this.createdAt = Instant.now().toString();
         this.permissions = permissions;
         this.routes = routes;
+    }
+
+    public static class Identifier {
+        public int id;
+        public String type;        // PERSISTENT, TEMPORARY
+    }
+
+    public static class Route {
+        public String path;
+        public String routePermission; // READ (r), WRITE (w)
     }
 }

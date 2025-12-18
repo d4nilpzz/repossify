@@ -7,7 +7,6 @@ import io.javalin.http.Cookie;
 import io.javalin.http.UnauthorizedResponse;
 
 public class AuthController {
-
     private static final String SESSION_COOKIE = "repossify_session";
     private static final int SESSION_TTL_SECONDS = 60 * 30;
 
@@ -18,7 +17,6 @@ public class AuthController {
     }
 
     public void registerRoutes(Javalin app) {
-
         app.before(ctx -> {
             String secret = null;
 

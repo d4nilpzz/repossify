@@ -202,7 +202,6 @@ public class CommandConsole implements Runnable {
         } catch (IllegalArgumentException e) {
             System.out.println("Error creating token: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
             System.out.println("Unexpected error: " + e.getMessage());
         }
     }

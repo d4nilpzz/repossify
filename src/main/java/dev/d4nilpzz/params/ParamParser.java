@@ -4,7 +4,6 @@ import java.lang.reflect.Field;
 import java.util.List;
 
 public class ParamParser {
-
     public static void parse(String[] args, Object target) {
         List<String> list = List.of(args);
 

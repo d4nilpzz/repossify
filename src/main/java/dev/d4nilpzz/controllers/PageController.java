@@ -1,5 +1,7 @@
 package dev.d4nilpzz.controllers;
 
+import dev.d4nilpzz.Repossify;
+import dev.d4nilpzz.RepossifyInit;
 import dev.d4nilpzz.repos.RepositoryData;
 import io.javalin.Javalin;
 import io.javalin.http.ContentType;
@@ -8,9 +10,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 public class PageController {
-
     public PageController(Javalin app) {
-
         app.get("/", ctx -> {
             try (InputStream is = getClass().getResourceAsStream("/static/index.html")) {
                 ctx.contentType("text/html");
@@ -26,7 +26,7 @@ public class PageController {
                 ctx.contentType(ContentType.APPLICATION_JSON);
                 ctx.json(data);
             } catch (Exception e) {
-                e.printStackTrace();
+                Repossify.logger.severe(e.getMessage());
                 ctx.status(500).result("{\"error\":\"Cannot load page or repos\"}");
             }
         });

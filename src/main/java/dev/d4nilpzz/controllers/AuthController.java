@@ -17,7 +17,6 @@ public class AuthController {
     }
 
     public void registerRoutes(Javalin app) {
-
         app.before(ctx -> {
             String secret = null;
 

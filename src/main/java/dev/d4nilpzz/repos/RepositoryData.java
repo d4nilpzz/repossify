@@ -13,7 +13,6 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class RepositoryData {
-
     private static final ObjectMapper mapper = new ObjectMapper();
     public String title;
     public String author;
@@ -74,7 +73,11 @@ public class RepositoryData {
             return repos;
         }
 
-        for (File repoDir : reposDir.listFiles(File::isDirectory)) {
+        File[] files = reposDir.listFiles(File::isDirectory);
+
+        if (files == null) return repos;
+
+        for (File repoDir : files) {
             Repository repo = new Repository();
             repo.name = repoDir.getName();
             repo.path = "/" + repoDir.getName();

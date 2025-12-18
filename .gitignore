@@ -31,3 +31,8 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Run ###
+data
+repossify.properties
+repossify.db

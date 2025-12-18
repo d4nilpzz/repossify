@@ -12,7 +12,6 @@ import java.nio.file.StandardCopyOption;
  * with a visible spinner for at least 2 seconds per file.
  */
 public class RepossifyInit {
-
     private static final String BASE_DIR = "./";
     private static final String[] DIRS = {"data/repos"};
     private static final String[][] FILES_TO_COPY = {

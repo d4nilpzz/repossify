@@ -7,25 +7,16 @@ import dev.d4nilpzz.controllers.ConfigController;
 import dev.d4nilpzz.controllers.PageController;
 import dev.d4nilpzz.params.ParamParser;
 import io.javalin.Javalin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.logging.ConsoleHandler;
-import java.util.logging.Logger;
-import java.util.logging.SimpleFormatter;
 
 public class Repossify {
-
     public static final String VERSION = "1.0.0";
-    public static final Logger logger = Logger.getLogger("Repossify");
-
-    static {
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(new SimpleFormatter());
-        logger.setUseParentHandlers(false);
-        logger.addHandler(handler);
-    }
+    private static final Logger LOGGER = LoggerFactory.getLogger(Repossify.class);
 
     public static void main(String[] args) {
         RepossifyArgs parsed = new RepossifyArgs();
@@ -33,11 +24,11 @@ public class Repossify {
 
         if (parsed.init) {
             if (!Files.exists(Paths.get("./repossify.properties"))) {
-                logger.info("Initializing Repossify...");
+                LOGGER.info("Initializing Repossify...");
                 RepossifyInit.init();
-                logger.info("Initialization completed.");
+                LOGGER.info("Initialization completed.");
             } else {
-                logger.warning("Properties file already exists. Initialization skipped.");
+                LOGGER.warn("Properties file already exists. Initialization skipped.");
             }
 
             return;
@@ -75,7 +66,7 @@ public class Repossify {
         try {
             tokenService = new TokenService("jdbc:sqlite:data/repossify.db");
         } catch (Exception e) {
-            logger.severe(e.getMessage());
+            LOGGER.error(e.getMessage());
             return;
         }
 
@@ -87,6 +78,6 @@ public class Repossify {
 
         new Thread(new CommandConsole(tokenService), "console").start();
 
-        logger.info("Running on http://" + hostname + ":" + port);
+        LOGGER.info("Running on http://{}:{}", hostname, port);
     }
 }

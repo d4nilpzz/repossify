@@ -1,5 +1,8 @@
 package dev.d4nilpzz;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,6 +15,7 @@ import java.nio.file.StandardCopyOption;
  * with a visible spinner for at least 2 seconds per file.
  */
 public class RepossifyInit {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RepossifyInit.class);
     private static final String BASE_DIR = "./";
     private static final String[] DIRS = {"data/repos"};
     private static final String[][] FILES_TO_COPY = {
@@ -27,7 +31,7 @@ public class RepossifyInit {
                 Path path = Paths.get(BASE_DIR, dir);
                 if (!Files.exists(path)) {
                     Files.createDirectories(path);
-                    System.out.println("Directory created: " + path);
+                    LOGGER.info("Directory created: {}", path);
                 }
             }
 
@@ -39,7 +43,7 @@ public class RepossifyInit {
 
                 InputStream is = cl.getResourceAsStream(resourcePath);
                 if (is == null) {
-                    System.err.println("Resource not found: " + resourcePath);
+                    LOGGER.error("Resource not found: {}", resourcePath);
                     continue;
                 }
 
@@ -56,13 +60,14 @@ public class RepossifyInit {
                     Thread.sleep(100);
                 }
 
-                System.out.print("\rFile copied: " + targetPath + " ✅\n");
+                System.out.print("\r");
+                LOGGER.info("File copied: {}", targetPath);
             }
 
-            System.out.println("Repossify initialized successfully.");
+            LOGGER.info("Repossify initialized successfully.");
 
         } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
+            LOGGER.error("Error initializing Repossify: {}", e.getMessage());
         }
     }
 

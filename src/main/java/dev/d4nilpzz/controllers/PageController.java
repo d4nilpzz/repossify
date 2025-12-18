@@ -1,7 +1,5 @@
 package dev.d4nilpzz.controllers;
 
-import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.RepossifyInit;
 import dev.d4nilpzz.repos.RepositoryData;
 import io.javalin.Javalin;
 import io.javalin.http.ContentType;
@@ -26,7 +24,6 @@ public class PageController {
                 ctx.contentType(ContentType.APPLICATION_JSON);
                 ctx.json(data);
             } catch (Exception e) {
-                Repossify.logger.severe(e.getMessage());
                 ctx.status(500).result("{\"error\":\"Cannot load page or repos\"}");
             }
         });

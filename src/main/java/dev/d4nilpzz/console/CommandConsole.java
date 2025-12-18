@@ -3,9 +3,10 @@ package dev.d4nilpzz.console;
 import dev.d4nilpzz.Repossify;
 import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.TokenService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.logging.Logger;
 
 /**
  * CommandConsole provides an interactive command-line interface for managing
@@ -13,8 +14,7 @@ import java.util.logging.Logger;
  * modification, renaming, secret regeneration, and server commands.
  */
 public class CommandConsole implements Runnable {
-
-    private static final Logger logger = Logger.getLogger(CommandConsole.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(CommandConsole.class);
     private final TokenService tokenService;
     private volatile boolean running = true;
 
@@ -34,7 +34,7 @@ public class CommandConsole implements Runnable {
     @Override
     public void run() {
         Scanner scanner = new Scanner(System.in);
-        logger.info("Command console started. Type 'help' for commands.");
+        LOGGER.info("Command console started. Type 'help' for commands.");
 
         while (running) {
             System.out.print("> ");
@@ -51,7 +51,6 @@ public class CommandConsole implements Runnable {
      * @param input raw command input from the user
      */
     private void handleCommand(String input) {
-        String prefix = " ➜ ";
         if (input.isEmpty()) return;
 
         String[] parts = input.split("\\s+");
@@ -60,102 +59,103 @@ public class CommandConsole implements Runnable {
 
         switch (command) {
             case "help":
-                System.out.println("\nAvailable commands:");
-                System.out.println(prefix + " help");
-                System.out.println(prefix + " stop");
-                System.out.println(prefix + " version");
-                System.out.println(prefix + " generate_token <name> [<permissions>] [--secret=<secret>] [--silent]");
-                System.out.println(prefix + " delete_token <name>");
-                System.out.println(prefix + " delete_all_tokens");
-                System.out.println(prefix + " token_modify <name> <permissions>");
-                System.out.println(prefix + " token_rename <oldName> <newName>");
-                System.out.println(prefix + " token_regenerate <name>");
-                System.out.println();
+                LOGGER.info("""
+                        \nAvailable commands:
+                        ➜ help
+                        ➜ stop
+                        ➜ version
+                        ➜ generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
+                        ➜ delete_token <name>
+                        ➜ delete_all_tokens
+                        ➜ token_modify <name> <permissions>
+                        ➜ token_rename <oldName> <newName>
+                        ➜ token_regenerate <name>
+                        
+                        """);
                 break;
 
             case "stop":
-                logger.info("Stopping Repossify...");
+                LOGGER.info("Stopping Repossify...");
                 running = false;
                 System.exit(0);
                 break;
-
             case "version":
-                System.out.println(Repossify.VERSION);
+                LOGGER.info(Repossify.VERSION);
                 break;
-
             case "generate_token":
                 generateToken(args);
                 break;
-
             case "delete_all_tokens":
                 try {
                     tokenService.deleteAllTokens();
-                    System.out.println("All tokens have been deleted from the database!");
+                    LOGGER.info("All tokens have been deleted from the database!");
                 } catch (Exception e) {
-                    System.out.println("Error deleting all tokens: " + e.getMessage());
+                    LOGGER.error("Error deleting all tokens: {}", e.getMessage());
                 }
-                break;
 
+                break;
             case "delete_token":
                 if (args.length < 1) {
-                    System.out.println("Usage: delete_token <name>");
+                    LOGGER.warn("Usage: delete_token <name>");
                     break;
                 }
+
                 try {
                     String tokenName = args[0];
                     tokenService.deleteTokenByName(tokenName);
-                    System.out.println("Token '" + tokenName + "' has been deleted successfully.");
+                    LOGGER.info("Token '{}' has been deleted successfully.", tokenName);
                 } catch (Exception e) {
-                    System.out.println("Error deleting token: " + e.getMessage());
+                    LOGGER.error("Error deleting token: {}", e.getMessage());
                 }
-                break;
 
+                break;
             case "token_modify":
                 if (args.length < 2) {
-                    System.out.println("Usage: token_modify <name> <permissions>");
+                    LOGGER.warn("Usage: token_modify <name> <permissions>");
                     break;
                 }
                 try {
                     String name = args[0];
                     List<String> perms = Arrays.asList(args[1].split(","));
                     tokenService.updateTokenPermissions(name, perms);
-                    System.out.println("Token '" + name + "' permissions updated to: " + perms);
+                    LOGGER.info("Token '{}' permissions updated to: {}", name, perms);
                 } catch (Exception e) {
-                    System.out.println("Error modifying token: " + e.getMessage());
+                    LOGGER.error("Error modifying token: {}", e.getMessage());
                 }
                 break;
 
             case "token_rename":
                 if (args.length < 2) {
-                    System.out.println("Usage: token_rename <oldName> <newName>");
+                    LOGGER.warn("Usage: token_rename <oldName> <newName>");
                     break;
                 }
+
                 try {
                     String oldName = args[0];
                     String newName = args[1];
                     tokenService.renameToken(oldName, newName);
-                    System.out.println("Token renamed from '" + oldName + "' to '" + newName + "'");
+                    LOGGER.info("Token renamed from '{}' to '{}'", oldName, newName);
                 } catch (Exception e) {
-                    System.out.println("Error renaming token: " + e.getMessage());
+                    LOGGER.error("Error renaming token: {}", e.getMessage());
                 }
                 break;
 
             case "token_regenerate":
                 if (args.length < 1) {
-                    System.out.println("Usage: token_regenerate <name>");
+                    LOGGER.warn("Usage: token_regenerate <name>");
                     break;
                 }
                 try {
                     String name = args[0];
                     String newSecret = tokenService.regenerateTokenSecret(name);
-                    System.out.println("Token '" + name + "' secret regenerated. New secret: " + newSecret);
+                    LOGGER.info("Token '{}' secret regenerated. New secret: {}", name, newSecret);
                 } catch (Exception e) {
-                    System.out.println("Error regenerating token: " + e.getMessage());
+                    LOGGER.error("Error regenerating token: {}", e.getMessage());
                 }
                 break;
 
             default:
-                System.out.println("Unknown command. Type 'help' to see available commands.");
+                LOGGER.warn("Unknown command. Type 'help' to see available commands.");
         }
     }
 
@@ -168,7 +168,7 @@ public class CommandConsole implements Runnable {
      */
     private void generateToken(String[] args) {
         if (args.length < 1) {
-            System.out.println("Usage: generate_token <name> [<permissions>] [--secret=<secret>] [--silent]");
+            LOGGER.warn("Usage: generate_token <name> [<permissions>] [--secret=<secret>] [--silent]");
             return;
         }
 
@@ -197,12 +197,12 @@ public class CommandConsole implements Runnable {
         try {
             AccessToken token = tokenService.createToken(name, permissions, secret);
             if (!silent) {
-                System.out.println("New token for \"" + name + "\" [" + secret + "] with permissions: " + permissions);
+                LOGGER.info("New token for \"{}\" [{}] with permissions: {}", name, secret, permissions);
             }
         } catch (IllegalArgumentException e) {
-            System.out.println("Error creating token: " + e.getMessage());
+            LOGGER.error("Error creating token: {}", e.getMessage());
         } catch (Exception e) {
-            System.out.println("Unexpected error: " + e.getMessage());
+            LOGGER.error("Unexpected error: {}", e.getMessage());
         }
     }
 }

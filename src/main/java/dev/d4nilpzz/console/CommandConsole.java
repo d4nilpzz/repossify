@@ -6,6 +6,9 @@ import dev.d4nilpzz.auth.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sun.management.OperatingSystemMXBean;
+import java.lang.management.ManagementFactory;
+
 import java.util.*;
 
 /**
@@ -34,7 +37,7 @@ public class CommandConsole implements Runnable {
     @Override
     public void run() {
         Scanner scanner = new Scanner(System.in);
-        LOGGER.info("Command console started. Type 'help' for commands.");
+        LOGGER.info("Command console started. Type 'help' or '0' for commands.");
 
         while (running) {
             System.out.print("> ");
@@ -58,33 +61,37 @@ public class CommandConsole implements Runnable {
         String[] args = Arrays.copyOfRange(parts, 1, parts.length);
 
         switch (command) {
+            case "0":
             case "help":
                 LOGGER.info("""
-                        \nAvailable commands:
-                        ➜ help
-                        ➜ stop
-                        ➜ version
-                        ➜ generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
-                        ➜ delete_token <name>
-                        ➜ delete_all_tokens
-                        ➜ token_modify <name> <permissions>
-                        ➜ token_rename <oldName> <newName>
-                        ➜ token_regenerate <name>
-                        
+                        Available commands:
+                        ➜ [0] help
+                        ➜ [1] stop
+                        ➜ [2] version
+                        ➜ [3] generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
+                        ➜ [4] delete_token <name>
+                        ➜ [5] delete_all_tokens
+                        ➜ [6] token_modify <name> <permissions>
+                        ➜ [7] token_rename <oldName> <newName>
+                        ➜ [8] token_regenerate <name>
+                        ➜ [9] performance
                         """);
                 break;
-
+            case "1":
             case "stop":
                 LOGGER.info("Stopping Repossify...");
                 running = false;
                 System.exit(0);
                 break;
+            case "2":
             case "version":
                 LOGGER.info(Repossify.VERSION);
                 break;
+            case "3":
             case "generate_token":
                 generateToken(args);
                 break;
+            case "4":
             case "delete_all_tokens":
                 try {
                     tokenService.deleteAllTokens();
@@ -94,6 +101,7 @@ public class CommandConsole implements Runnable {
                 }
 
                 break;
+            case "5":
             case "delete_token":
                 if (args.length < 1) {
                     LOGGER.warn("Usage: delete_token <name>");
@@ -109,6 +117,7 @@ public class CommandConsole implements Runnable {
                 }
 
                 break;
+            case "6":
             case "token_modify":
                 if (args.length < 2) {
                     LOGGER.warn("Usage: token_modify <name> <permissions>");
@@ -123,7 +132,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error modifying token: {}", e.getMessage());
                 }
                 break;
-
+            case "7":
             case "token_rename":
                 if (args.length < 2) {
                     LOGGER.warn("Usage: token_rename <oldName> <newName>");
@@ -139,7 +148,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error renaming token: {}", e.getMessage());
                 }
                 break;
-
+            case "8":
             case "token_regenerate":
                 if (args.length < 1) {
                     LOGGER.warn("Usage: token_regenerate <name>");
@@ -153,10 +162,41 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error regenerating token: {}", e.getMessage());
                 }
                 break;
+            case "9":
+            case "performance":
+                performance();
+                break;
 
             default:
                 LOGGER.warn("Unknown command. Type 'help' to see available commands.");
         }
+    }
+
+    /**
+     * Processes a single console command, parses its arguments,
+     * and dispatches execution to the corresponding handler.
+     */
+    private void performance() {
+        Runtime rt = Runtime.getRuntime();
+        OperatingSystemMXBean os =
+                (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+        long usedMem = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
+        long totalMem = rt.totalMemory() / 1024 / 1024;
+
+        int cpuUsage = (int) Math.round(os.getProcessCpuLoad() * 100);
+
+        LOGGER.info("""
+            Performance stats:
+            ➜ CPU usage       : {} %
+            ➜ CPU cores       : {}
+            ➜ Memory used     : {} / {} MB
+            """,
+                cpuUsage,
+                rt.availableProcessors(),
+                usedMem,
+                totalMem
+        );
     }
 
     /**

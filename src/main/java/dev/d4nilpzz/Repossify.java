@@ -18,7 +18,8 @@ public class Repossify {
     public static final String VERSION = "1.0.0";
     private static final Logger LOGGER = LoggerFactory.getLogger(Repossify.class);
 
-    public static void main(String[] args) {
+    public static void main(String[] args)
+    {
         RepossifyArgs parsed = new RepossifyArgs();
         ParamParser.parse(args, parsed);
 
@@ -37,8 +38,8 @@ public class Repossify {
         run(parsed);
     }
 
-
-    private static void run(RepossifyArgs args) {
+    private static void run(RepossifyArgs args)
+    {
         int port = 8080;
         String hostname;
 
@@ -70,7 +71,10 @@ public class Repossify {
             return;
         }
 
-        Javalin app = Javalin.create(cfg -> cfg.staticFiles.add("/static")).start(port);
+        Javalin app = Javalin.create(cfg ->{
+            cfg.staticFiles.add("/static");
+            cfg.showJavalinBanner = false;
+        }).start(port);
 
         new PageController(app);
         new ConfigController(app);

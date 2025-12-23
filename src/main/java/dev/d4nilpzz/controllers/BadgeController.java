@@ -25,10 +25,12 @@ public class BadgeController {
         String label  = ctx.queryParam("label");
         String prefix = ctx.queryParam("prefix");
         String filter = ctx.queryParam("filter");
+        String rounded = ctx.queryParam("r");
 
         if (color == null)  color = "40c14a";
         if (label == null)  label = repo;
         if (prefix == null) prefix = "";
+        if (rounded == null) prefix = "4";
 
         Path versionsDir = BASE_PATH
                 .resolve(type)
@@ -38,7 +40,7 @@ public class BadgeController {
 
         if (!Files.isDirectory(versionsDir)) {
             ctx.contentType("image/svg+xml");
-            String svg = buildSvg(label,"unknown", color);
+            String svg = svgBuilder(label,"unknown", color, rounded);
             ctx.result(svg);
             return;
         }
@@ -51,7 +53,7 @@ public class BadgeController {
                     .max(Comparator.naturalOrder())
                     .orElse("unknown");
 
-            String svg = buildSvg(label, prefix + latestVersion, color);
+            String svg = svgBuilder(label, prefix + latestVersion, color, rounded);
 
             ctx.contentType("image/svg+xml");
             ctx.result(svg);
@@ -61,7 +63,7 @@ public class BadgeController {
         }
     }
 
-    private String buildSvg(String label, String version, String color) {
+    private String svgBuilder(String label, String version, String color, String rounded) {
         return """
         <svg xmlns="http://www.w3.org/2000/svg" width="141" height="20" role="img" aria-label="%s: %s">
           <title>%s: %s</title>
@@ -70,7 +72,7 @@ public class BadgeController {
             <stop offset="1" stop-opacity=".1"/>
           </linearGradient>
           <clipPath id="r">
-            <rect width="141" height="20" rx="4" fill="#fff"/>
+            <rect width="141" height="20" rx="%s" fill="#fff"/>
           </clipPath>
           <g clip-path="url(#r)">
             <rect width="79" height="20" fill="#555"/>
@@ -86,6 +88,6 @@ public class BadgeController {
             <text x="1100" y="140" transform="scale(.1)" textLength="400">%s</text>
           </g>
         </svg>
-        """.formatted(label, version, label, version, color, label, label, version, version);
+        """.formatted(label, version, label, version, rounded, color, label, label, version, version);
     }
 }

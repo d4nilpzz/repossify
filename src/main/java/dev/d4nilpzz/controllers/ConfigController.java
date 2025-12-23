@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.d4nilpzz.auth.AccessToken;
+import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
 import io.javalin.Javalin;
 
@@ -28,17 +29,8 @@ public class ConfigController {
 
     public void registerRoutes(Javalin app) {
         app.put("/config/update", ctx -> {
-            String authHeader = ctx.header("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                ctx.status(401).result("Missing or invalid Authorization header");
-                return;
-            }
-            String tokenSecret = authHeader.substring("Bearer ".length());
-            AccessToken token = tokenService.getTokenBySecret(tokenSecret);
-            if (token == null || !token.permissions.contains("M")) {
-                ctx.status(403).result("Forbidden: token lacks M permission");
-                return;
-            }
+
+            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/config", tokenService);
 
             ObjectNode oldConfig = (ObjectNode) mapper.readTree(PAGE_CONFIG_PATH.toFile());
             ObjectNode newConfig = oldConfig.deepCopy();

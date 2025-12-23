@@ -319,4 +319,29 @@ public class TokenService {
         }
     }
 
+    /**
+     * Removes a route from an existing token.
+     *
+     * @param tokenName the name of the token
+     * @param path the path to remove from the token's routes
+     * @throws SQLException if a database error occurs
+     * @throws IllegalArgumentException if token not found
+     */
+    public void removeRouteFromToken(String tokenName, String path) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(dbUrl)) {
+            PreparedStatement psId = conn.prepareStatement("SELECT id FROM access_tokens WHERE name=?");
+            psId.setString(1, tokenName);
+            ResultSet rs = psId.executeQuery();
+            if (!rs.next()) throw new IllegalArgumentException("Token not found");
+            int id = rs.getInt("id");
+
+            PreparedStatement psDelete = conn.prepareStatement(
+                    "DELETE FROM token_routes WHERE token_id=? AND path=?"
+            );
+            psDelete.setInt(1, id);
+            psDelete.setString(2, path);
+            psDelete.executeUpdate();
+        }
+    }
+
 }

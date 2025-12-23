@@ -76,6 +76,7 @@ public class CommandConsole implements Runnable {
                         ➜ [8]  token_regenerate <name>
                         ➜ [9]  performance
                         ➜ [10] token_add_route <tokenName> <path> <r/w>
+                        ➜ [11] token_remove_route <tokenName> <path>
                         """);
                 break;
             case "1":
@@ -187,6 +188,21 @@ public class CommandConsole implements Runnable {
                     LOGGER.info("Route '{}' added to token '{}' with permission '{}'", path, tokenName, routePerm);
                 } catch (Exception e) {
                     LOGGER.error("Error adding route: {}", e.getMessage());
+                }
+                break;
+            case "11":
+            case "token_remove_route":
+                if (args.length < 2) {
+                    LOGGER.warn("Usage: token_remove_route <tokenName> <path>");
+                    break;
+                }
+                try {
+                    String tokenName = args[0];
+                    String path = args[1];
+                    tokenService.removeRouteFromToken(tokenName, path);
+                    LOGGER.info("Route '{}' removed from token '{}'", path, tokenName);
+                } catch (Exception e) {
+                    LOGGER.error("Error removing route: {}", e.getMessage());
                 }
                 break;
 

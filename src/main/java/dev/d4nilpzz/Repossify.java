@@ -3,6 +3,7 @@ package dev.d4nilpzz;
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
 import dev.d4nilpzz.controllers.AuthController;
+import dev.d4nilpzz.controllers.BadgeController;
 import dev.d4nilpzz.controllers.ConfigController;
 import dev.d4nilpzz.controllers.PageController;
 import dev.d4nilpzz.params.ParamParser;
@@ -78,6 +79,7 @@ public class Repossify {
 
         new PageController(app);
         new ConfigController(app);
+        new BadgeController(app);
         new AuthController(tokenService).registerRoutes(app);
 
         new Thread(new CommandConsole(tokenService), "console").start();

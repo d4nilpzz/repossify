@@ -291,4 +291,32 @@ public class TokenService {
         }
         return null;
     }
+
+    /**
+     * Adds a route to an existing token.
+     *
+     * @param tokenName the name of the token to add the route to
+     * @param path the path to add to the token's routes
+     * @param permission the permission required to access the route
+     * @throws SQLException if a database error occurs
+     */
+    public void addRouteToToken(String tokenName, String path, String permission) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(dbUrl)) {
+
+            PreparedStatement psId = conn.prepareStatement("SELECT id FROM access_tokens WHERE name=?");
+            psId.setString(1, tokenName);
+            ResultSet rs = psId.executeQuery();
+            if (!rs.next()) throw new IllegalArgumentException("Token not found");
+            int id = rs.getInt("id");
+
+            PreparedStatement psRoute = conn.prepareStatement(
+                    "INSERT INTO token_routes(token_id, path, route_permission) VALUES (?, ?, ?)"
+            );
+            psRoute.setInt(1, id);
+            psRoute.setString(2, path);
+            psRoute.setString(3, permission.toUpperCase());
+            psRoute.executeUpdate();
+        }
+    }
+
 }

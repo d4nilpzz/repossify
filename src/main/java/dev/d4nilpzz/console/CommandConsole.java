@@ -65,16 +65,17 @@ public class CommandConsole implements Runnable {
             case "help":
                 LOGGER.info("""
                         Available commands:
-                        ➜ [0] help
-                        ➜ [1] stop
-                        ➜ [2] version
-                        ➜ [3] generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
-                        ➜ [4] delete_token <name>
-                        ➜ [5] delete_all_tokens
-                        ➜ [6] token_modify <name> <permissions>
-                        ➜ [7] token_rename <oldName> <newName>
-                        ➜ [8] token_regenerate <name>
-                        ➜ [9] performance
+                        ➜ [0]  help
+                        ➜ [1]  stop
+                        ➜ [2]  version
+                        ➜ [3]  generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
+                        ➜ [4]  delete_token <name>
+                        ➜ [5]  delete_all_tokens
+                        ➜ [6]  token_modify <name> <permissions>
+                        ➜ [7]  token_rename <oldName> <newName>
+                        ➜ [8]  token_regenerate <name>
+                        ➜ [9]  performance
+                        ➜ [10] token_add_route <tokenName> <path> <r/w>
                         """);
                 break;
             case "1":
@@ -165,6 +166,28 @@ public class CommandConsole implements Runnable {
             case "9":
             case "performance":
                 performance();
+                break;
+            case "10":
+            case "token_add_route":
+                if (args.length < 3) {
+                    LOGGER.warn("Usage: token_add_route <tokenName> <path> <r/w>");
+                    break;
+                }
+                try {
+                    String tokenName = args[0];
+                    String path = args[1];
+                    String routePerm = args[2].toLowerCase();
+
+                    if (!routePerm.equals("r") && !routePerm.equals("w")) {
+                        LOGGER.warn("Route permission must be 'r' or 'w'");
+                        break;
+                    }
+
+                    tokenService.addRouteToToken(tokenName, path, routePerm);
+                    LOGGER.info("Route '{}' added to token '{}' with permission '{}'", path, tokenName, routePerm);
+                } catch (Exception e) {
+                    LOGGER.error("Error adding route: {}", e.getMessage());
+                }
                 break;
 
             default:

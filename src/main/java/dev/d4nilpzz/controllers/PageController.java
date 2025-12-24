@@ -17,7 +17,7 @@ public class PageController {
             }
         });
 
-        app.get("/api/page", ctx -> {
+        app.get("/api/page/content", ctx -> {
             try {
                 RepositoryData data = RepositoryData.loadPageConfig();
                 data.repositories = RepositoryData.loadRepositories();

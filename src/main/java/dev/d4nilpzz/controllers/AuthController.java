@@ -37,7 +37,7 @@ public class AuthController {
             }
         });
 
-        app.post("/auth/signin", ctx -> {
+        app.post("/api/auth/signin", ctx -> {
             String authHeader = ctx.header("Authorization");
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 throw new UnauthorizedResponse("Missing token");
@@ -58,7 +58,7 @@ public class AuthController {
             ctx.json(token);
         });
 
-        app.post("/auth/signout", ctx -> {
+        app.post("/api/auth/signout", ctx -> {
             AccessToken token = ctx.attribute("token");
             if (token == null) {
                 throw new UnauthorizedResponse("No active session");
@@ -68,7 +68,7 @@ public class AuthController {
             ctx.json("Signed out");
         });
 
-        app.get("/auth/me", ctx -> {
+        app.get("/api/auth/me", ctx -> {
             AccessToken token = ctx.attribute("token");
             if (token == null) {
                 throw new UnauthorizedResponse("Not signed in");

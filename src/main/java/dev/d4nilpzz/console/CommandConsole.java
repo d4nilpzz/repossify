@@ -74,9 +74,9 @@ public class CommandConsole implements Runnable {
                         ➜ [6]  token_modify <name> <permissions>
                         ➜ [7]  token_rename <oldName> <newName>
                         ➜ [8]  token_regenerate <name>
-                        ➜ [9]  performance
-                        ➜ [10] token_add_route <tokenName> <path> <r/w>
-                        ➜ [11] token_remove_route <tokenName> <path>
+                        ➜ [9]  token_add_route <tokenName> <path> <r/w>
+                        ➜ [10] token_remove_route <tokenName> <path>
+                        ➜ [11] performance
                         """);
                 break;
             case "1":
@@ -164,11 +164,8 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error regenerating token: {}", e.getMessage());
                 }
                 break;
+
             case "9":
-            case "performance":
-                performance();
-                break;
-            case "10":
             case "token_add_route":
                 if (args.length < 3) {
                     LOGGER.warn("Usage: token_add_route <tokenName> <path> <r/w>");
@@ -190,7 +187,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error adding route: {}", e.getMessage());
                 }
                 break;
-            case "11":
+            case "10":
             case "token_remove_route":
                 if (args.length < 2) {
                     LOGGER.warn("Usage: token_remove_route <tokenName> <path>");
@@ -204,6 +201,10 @@ public class CommandConsole implements Runnable {
                 } catch (Exception e) {
                     LOGGER.error("Error removing route: {}", e.getMessage());
                 }
+                break;
+            case "11":
+            case "performance":
+                performance();
                 break;
 
             default:

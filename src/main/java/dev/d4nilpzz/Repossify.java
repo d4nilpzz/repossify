@@ -78,8 +78,9 @@ public class Repossify {
         }).start(port);
 
         new PageController(app);
-        new ConfigController(app);
         new BadgeController(app);
+
+        new ConfigController(tokenService).registerRoutes(app);
         new AuthController(tokenService).registerRoutes(app);
 
         new Thread(new CommandConsole(tokenService), "console").start();

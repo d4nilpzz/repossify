@@ -3,6 +3,9 @@ package dev.d4nilpzz.controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.d4nilpzz.auth.AccessToken;
+import dev.d4nilpzz.auth.AuthRoute;
+import dev.d4nilpzz.auth.TokenService;
 import io.javalin.Javalin;
 
 import java.nio.file.DirectoryStream;
@@ -18,12 +21,16 @@ public class ConfigController {
     private static final Path REPOS_BASE_PATH = Paths.get("./data/repos");
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    public ConfigController(Javalin app) {
+    private final TokenService tokenService;
+
+    public ConfigController(TokenService tokenService) {
+        this.tokenService = tokenService;
+    }
+
+    public void registerRoutes(Javalin app) {
         app.put("/config/update", ctx -> {
-            if (!Files.exists(PAGE_CONFIG_PATH)) {
-                ctx.status(404).result("page.json not found");
-                return;
-            }
+
+            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/config", tokenService);
 
             ObjectNode oldConfig = (ObjectNode) mapper.readTree(PAGE_CONFIG_PATH.toFile());
             ObjectNode newConfig = oldConfig.deepCopy();

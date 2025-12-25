@@ -9,9 +9,11 @@ import io.javalin.http.Context;
 import io.javalin.http.UploadedFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class FileController {
@@ -26,6 +28,34 @@ public class FileController {
     public void registerRoutes(Javalin app) {
         app.post("/api/file/upload", this::handleFileUpload);
         app.delete("/api/file/delete", this::handleFileDelete);
+
+        app.get("/api/file/view/*", this::handleFileView);
+    }
+
+    private void handleFileView(Context ctx) throws IOException {
+        String fullPath = ctx.path(); // "/api/file/view/releases/dev/dani/logger/1.0.0/logger-1.0.0.pom"
+        String prefix = "/api/file/view/";
+        if (!fullPath.startsWith(prefix)) {
+            ctx.status(400).result("Invalid path");
+            return;
+        }
+
+        String filePath = fullPath.substring(prefix.length());
+
+        final Path BASE_PATH_VIEW = Paths.get("./data/repos").toAbsolutePath().normalize();
+        Path target = BASE_PATH_VIEW.resolve(filePath).normalize();
+        if (!target.startsWith(BASE_PATH_VIEW) || !Files.exists(target) || Files.isDirectory(target)) {
+            ctx.status(404).result("File not found");
+            return;
+        }
+
+        String contentType = Files.probeContentType(target);
+        if (contentType == null) contentType = "application/octet-stream";
+        System.out.println(target);
+        try (InputStream in = Files.newInputStream(target)) {
+            ctx.contentType(contentType);
+            ctx.result(in);
+        }
     }
 
     private void handleFileUpload(Context ctx) throws IOException {

@@ -127,10 +127,6 @@ public class FileController {
         String repo = ctx.queryParam("repo");
         String path = ctx.queryParam("path");
 
-        System.out.println("handleDeletePath called with:");
-        System.out.println("repo = " + repo);
-        System.out.println("path = " + path);
-
         if (repo == null || path == null || repo.isEmpty() || path.isEmpty()) {
             ctx.status(400).result("Missing repo or path");
             return;
@@ -147,8 +143,6 @@ public class FileController {
         for (String segment : path.split("/")) {
             target = target.resolve(segment);
         }
-
-        System.out.println("Resolved target path: " + target.toAbsolutePath());
 
         if (!Files.exists(target)) {
             ctx.status(404).result("Path not found");

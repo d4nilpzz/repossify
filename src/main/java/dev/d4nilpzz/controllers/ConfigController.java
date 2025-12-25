@@ -28,9 +28,9 @@ public class ConfigController {
     }
 
     public void registerRoutes(Javalin app) {
-        app.put("/config/update", ctx -> {
+        app.put("/api/config/update", ctx -> {
 
-            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/config", tokenService);
+            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/config/update", tokenService);
 
             ObjectNode oldConfig = (ObjectNode) mapper.readTree(PAGE_CONFIG_PATH.toFile());
             ObjectNode newConfig = oldConfig.deepCopy();

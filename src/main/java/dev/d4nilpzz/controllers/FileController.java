@@ -11,6 +11,7 @@ import io.javalin.http.UploadedFile;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -25,13 +26,13 @@ public class FileController {
 
     public void registerRoutes(Javalin app) {
         app.post("/api/file/upload", this::handleFileUpload);
-        app.delete("/api/file/delete", this::handleFileDelete);
+        app.delete("/api/file/delete", this::handleDeletePath);
 
         app.get("/api/file/view/*", this::handleFileView);
     }
 
     private void handleFileView(Context ctx) throws IOException {
-        String fullPath = ctx.path(); // "/api/file/view/releases/dev/dani/logger/1.0.0/logger-1.0.0.pom"
+        String fullPath = ctx.path();
         String prefix = "/api/file/view/";
         if (!fullPath.startsWith(prefix)) {
             ctx.status(400).result("Invalid path");
@@ -120,26 +121,47 @@ public class FileController {
         ctx.status(201);
     }
 
-    private void handleFileDelete(Context ctx) throws IOException {
+    private void handleDeletePath(Context ctx) throws IOException {
         AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/file/delete", tokenService);
 
-        String repo = ctx.formParam("repo");
-        String path = ctx.formParam("path");
+        String repo = ctx.queryParam("repo");
+        String path = ctx.queryParam("path");
 
-        Path target = BASE_PATH.resolve(repo).resolve(path);
+        System.out.println("handleDeletePath called with:");
+        System.out.println("repo = " + repo);
+        System.out.println("path = " + path);
 
-        if (!Files.exists(target)) {
-            ctx.status(404);
+        if (repo == null || path == null || repo.isEmpty() || path.isEmpty()) {
+            ctx.status(400).result("Missing repo or path");
             return;
         }
 
+        if (path.startsWith("/" + repo + "/")) {
+            path = path.substring(repo.length() + 2);
+        } else if (path.startsWith(repo + "/")) {
+            path = path.substring(repo.length() + 1);
+        }
+
+        // Resuelve el path correctamente
+        Path target = BASE_PATH.resolve(repo);
+        for (String segment : path.split("/")) {
+            target = target.resolve(segment);
+        }
+
+        System.out.println("Resolved target path: " + target.toAbsolutePath());
+
+        if (!Files.exists(target)) {
+            ctx.status(404).result("Path not found");
+            return;
+        }
+
+        // Borra archivo o carpeta recursivamente
         Files.walk(target)
-                .sorted((a, b) -> b.compareTo(a))
+                .sorted(Comparator.reverseOrder())
                 .forEach(p -> {
                     try {
                         Files.delete(p);
-                    } catch (IOException ignored) {
-                    }
+                    } catch (IOException ignored) {}
                 });
 
         ctx.status(204);

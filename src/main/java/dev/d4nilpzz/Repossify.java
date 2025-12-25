@@ -74,9 +74,8 @@ public class Repossify {
             cfg.showJavalinBanner = false;
         }).start(port);
 
-        new PageController(app);
         new BadgeController(app);
-
+        new PageController(tokenService).registerRoutes(app);
         new ConfigController(tokenService).registerRoutes(app);
         new AuthController(tokenService).registerRoutes(app);
         new FileController(tokenService).registerRoutes(app);

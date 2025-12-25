@@ -9,11 +9,9 @@ import io.javalin.http.Context;
 import io.javalin.http.UploadedFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 public class FileController {
@@ -51,11 +49,8 @@ public class FileController {
 
         String contentType = Files.probeContentType(target);
         if (contentType == null) contentType = "application/octet-stream";
-        System.out.println(target);
-        try (InputStream in = Files.newInputStream(target)) {
-            ctx.contentType(contentType);
-            ctx.result(in);
-        }
+        ctx.contentType(contentType);
+        ctx.result(Files.newInputStream(target));
     }
 
     private void handleFileUpload(Context ctx) throws IOException {

@@ -2,10 +2,7 @@ package dev.d4nilpzz;
 
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
-import dev.d4nilpzz.controllers.AuthController;
-import dev.d4nilpzz.controllers.BadgeController;
-import dev.d4nilpzz.controllers.ConfigController;
-import dev.d4nilpzz.controllers.PageController;
+import dev.d4nilpzz.controllers.*;
 import dev.d4nilpzz.params.ParamParser;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
@@ -77,11 +74,11 @@ public class Repossify {
             cfg.showJavalinBanner = false;
         }).start(port);
 
-        new PageController(app);
         new BadgeController(app);
-
+        new PageController(tokenService).registerRoutes(app);
         new ConfigController(tokenService).registerRoutes(app);
         new AuthController(tokenService).registerRoutes(app);
+        new FileController(tokenService).registerRoutes(app);
 
         new Thread(new CommandConsole(tokenService), "console").start();
 

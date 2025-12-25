@@ -103,6 +103,7 @@ public class RepositoryData {
     public static class Repository {
         public String name;
         public String path;
+        public boolean isPrivate;
         public List<TreeNode> tree;
     }
 

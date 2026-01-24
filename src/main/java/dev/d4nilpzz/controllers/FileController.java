@@ -28,12 +28,12 @@ public class FileController {
         app.post("/api/file/upload", this::handleFileUpload);
         app.delete("/api/file/delete", this::handleDeletePath);
 
-        app.get("/api/file/view/*", this::handleFileView);
+        app.get("/repo/*", this::handleFileView);
     }
 
     private void handleFileView(Context ctx) throws IOException {
         String fullPath = ctx.path();
-        String prefix = "/api/file/view/";
+        String prefix = "/repo/";
         if (!fullPath.startsWith(prefix)) {
             ctx.status(400).result("Invalid path");
             return;

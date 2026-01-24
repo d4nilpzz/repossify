@@ -3,6 +3,7 @@ package dev.d4nilpzz;
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
 import dev.d4nilpzz.controllers.*;
+import dev.d4nilpzz.middleware.RateLimitMiddleware;
 import dev.d4nilpzz.params.ParamParser;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
@@ -39,6 +40,7 @@ public class Repossify {
     private static void run(RepossifyArgs args)
     {
         int port = 8080;
+        int REQUEST_PER_SECOND = 2;
         String hostname;
 
         try {
@@ -53,6 +55,8 @@ public class Repossify {
             port = Integer.parseInt(
                     args.port != null ? args.port : cfg.get("port", String.valueOf(port))
             );
+
+            REQUEST_PER_SECOND = Integer.parseInt(cfg.get("requestsPerSecond", String.valueOf(REQUEST_PER_SECOND)));
 
             hostname = args.hostname != null
                     ? args.hostname

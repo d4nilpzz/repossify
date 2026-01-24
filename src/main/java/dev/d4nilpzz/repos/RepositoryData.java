@@ -19,6 +19,7 @@ public class RepositoryData {
     public String group_id;
     public String description;
     public String avatar_url;
+    public String domain_url;
     public List<Link> links;
     public List<Repository> repositories;
 

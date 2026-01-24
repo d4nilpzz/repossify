@@ -4,7 +4,25 @@
   "group_id": "com.example",
   "description": "A powerful maven repository.",
   "avatar_url": "/public/repossify.png",
+  "domain": "https://maven.domain.dev/",
   "links": [
-    { "url": "https://github.com/d4nilpzz/repossify", "icon": "github" }
+    {
+      "url": "https://github.com/d4nilpzz/repossify",
+      "icon": "github"
+    }
+  ],
+  "repositories": [
+    {
+      "name": "releases",
+      "path": "/releases",
+      "isPrivate": false,
+      "tree": []
+    },
+    {
+      "name": "private",
+      "path": "/private",
+      "isPrivate": true,
+      "tree": []
+    }
   ]
 }

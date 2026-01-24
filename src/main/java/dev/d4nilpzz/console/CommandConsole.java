@@ -7,8 +7,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sun.management.OperatingSystemMXBean;
+
+import java.io.File;
 import java.lang.management.ManagementFactory;
 
+import java.nio.file.FileStore;
+import java.nio.file.FileSystems;
 import java.util.*;
 
 /**
@@ -20,6 +24,8 @@ public class CommandConsole implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandConsole.class);
     private final TokenService tokenService;
     private volatile boolean running = true;
+
+    private static final int BAR_LENGTH = 50;
 
     /**
      * Constructs a CommandConsole instance with the given TokenService.
@@ -37,7 +43,7 @@ public class CommandConsole implements Runnable {
     @Override
     public void run() {
         Scanner scanner = new Scanner(System.in);
-        LOGGER.info("Command console started. Type 'help' or '0' for commands.");
+        LOGGER.info("Command console started. Type 'help' or '?' for commands.");
 
         while (running) {
             System.out.print("> ");
@@ -61,39 +67,43 @@ public class CommandConsole implements Runnable {
         String[] args = Arrays.copyOfRange(parts, 1, parts.length);
 
         switch (command) {
-            case "0":
+            case "?":
             case "help":
                 LOGGER.info("""
                         Available commands:
-                        ➜ [0]  help
-                        ➜ [1]  stop
-                        ➜ [2]  version
-                        ➜ [3]  generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
-                        ➜ [4]  delete_token <name>
-                        ➜ [5]  delete_all_tokens
-                        ➜ [6]  token_modify <name> <permissions>
-                        ➜ [7]  token_rename <oldName> <newName>
-                        ➜ [8]  token_regenerate <name>
-                        ➜ [9]  token_add_route <tokenName> <path> <r/w>
-                        ➜ [10] token_remove_route <tokenName> <path>
-                        ➜ [11] performance
+                        ➜ help or ?
+                        ➜ stop
+                        ➜ docs
+                        ➜ version
+                        ➜ generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
+                        ➜ delete_token <name>
+                        ➜ delete_all_tokens
+                        ➜ token_modify <name> <permissions>
+                        ➜ token_rename <oldName> <newName>
+                        ➜ token_regenerate <name>
+                        ➜ token_add_route <tokenName> <path> <r/w>
+                        ➜ token_remove_route <tokenName> <path>
+                        ➜ performance
                         """);
                 break;
-            case "1":
             case "stop":
                 LOGGER.info("Stopping Repossify...");
                 running = false;
                 System.exit(0);
                 break;
-            case "2":
+
+            case "docs":
+                LOGGER.info("https://github.com/d4nilpzz/repossify/");
+                break;
+
             case "version":
                 LOGGER.info(Repossify.VERSION);
                 break;
-            case "3":
+
             case "generate_token":
                 generateToken(args);
                 break;
-            case "4":
+
             case "delete_all_tokens":
                 try {
                     tokenService.deleteAllTokens();
@@ -103,7 +113,7 @@ public class CommandConsole implements Runnable {
                 }
 
                 break;
-            case "5":
+
             case "delete_token":
                 if (args.length < 1) {
                     LOGGER.warn("Usage: delete_token <name>");
@@ -119,7 +129,7 @@ public class CommandConsole implements Runnable {
                 }
 
                 break;
-            case "6":
+
             case "token_modify":
                 if (args.length < 2) {
                     LOGGER.warn("Usage: token_modify <name> <permissions>");
@@ -134,7 +144,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error modifying token: {}", e.getMessage());
                 }
                 break;
-            case "7":
+
             case "token_rename":
                 if (args.length < 2) {
                     LOGGER.warn("Usage: token_rename <oldName> <newName>");
@@ -150,7 +160,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error renaming token: {}", e.getMessage());
                 }
                 break;
-            case "8":
+
             case "token_regenerate":
                 if (args.length < 1) {
                     LOGGER.warn("Usage: token_regenerate <name>");
@@ -165,7 +175,6 @@ public class CommandConsole implements Runnable {
                 }
                 break;
 
-            case "9":
             case "token_add_route":
                 if (args.length < 3) {
                     LOGGER.warn("Usage: token_add_route <tokenName> <path> <r/w>");
@@ -187,7 +196,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error adding route: {}", e.getMessage());
                 }
                 break;
-            case "10":
+
             case "token_remove_route":
                 if (args.length < 2) {
                     LOGGER.warn("Usage: token_remove_route <tokenName> <path>");
@@ -202,7 +211,7 @@ public class CommandConsole implements Runnable {
                     LOGGER.error("Error removing route: {}", e.getMessage());
                 }
                 break;
-            case "11":
+
             case "performance":
                 performance();
                 break;
@@ -216,27 +225,54 @@ public class CommandConsole implements Runnable {
      * Processes a single console command, parses its arguments,
      * and dispatches execution to the corresponding handler.
      */
-    private void performance() {
+    private static void performance() {
         Runtime rt = Runtime.getRuntime();
-        OperatingSystemMXBean os =
-                (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+        OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
 
-        long usedMem = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
-        long totalMem = rt.totalMemory() / 1024 / 1024;
+        // CPU: medir % usado por el proceso respetando cores limitados
+        int cpuCores = Math.min(rt.availableProcessors(), 2); // ActiveProcessorCount=2
+        double cpuUsage = 0.0;
+        try {
+            long startTime = System.nanoTime();
+            long startCpu = os.getProcessCpuTime();
+            Thread.sleep(100); // breve espera
+            long endTime = System.nanoTime();
+            long endCpu = os.getProcessCpuTime();
+            cpuUsage = (endCpu - startCpu) / (double)(endTime - startTime) / 1_000_000_000.0 / cpuCores;
+            cpuUsage = Math.min(cpuUsage, 1.0); // máximo 100%
+        } catch (Exception ignored) {}
+        int cpuPercent = (int) Math.round(cpuUsage * 100);
+        String cpuBar = buildBar(cpuPercent, BAR_LENGTH);
 
-        int cpuUsage = (int) Math.round(os.getProcessCpuLoad() * 100);
+        // Memoria de la JVM en GB
+        double usedMem = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0 / 1024.0;
+        double maxMem = rt.maxMemory() / 1024.0 / 1024.0 / 1024.0;
+        int memPercent = maxMem == 0 ? 0 : (int) ((usedMem * 100) / maxMem);
+        String memBar = buildBar(memPercent, BAR_LENGTH);
 
-        LOGGER.info("""
-            Performance stats:
-            ➜ CPU usage       : {} %
-            ➜ CPU cores       : {}
-            ➜ Memory used     : {} / {} MB
-            """,
-                cpuUsage,
-                rt.availableProcessors(),
-                usedMem,
-                totalMem
+        String currentDir = System.getProperty("user.dir");
+        File jarDrive = new File(currentDir).getAbsoluteFile().toPath().getRoot().toFile();
+        long totalStore = jarDrive.getTotalSpace() / 1024 / 1024 / 1024; // GB
+        long usedStore = (totalStore - jarDrive.getUsableSpace() / 1024 / 1024 / 1024); // GB
+        int storePercent = totalStore == 0 ? 0 : (int) ((usedStore * 100) / totalStore);
+        String storeBar = buildBar(storePercent, BAR_LENGTH);
+
+        System.out.printf(
+                "CPU     [ %s ] %d%% (%d cores)%n" +
+                        "Memory  [ %s ] %.2f/%.2f GB%n" +
+                        "Storage [ %s ] %d GB / %d GB%n",
+                cpuBar, cpuPercent, cpuCores,
+                memBar, usedMem, maxMem,
+                storeBar, usedStore, totalStore
         );
+    }
+
+    private static String buildBar(int percent, int length) {
+        int filled = (percent * length) / 100;
+        StringBuilder bar = new StringBuilder();
+        for (int i = 0; i < filled; i++) bar.append("|");
+        for (int i = filled; i < length; i++) bar.append(" ");
+        return bar.toString();
     }
 
     /**

@@ -76,6 +76,7 @@ public class Repossify {
         Javalin app = Javalin.create(cfg ->{
             cfg.staticFiles.add("/static");
             cfg.showJavalinBanner = false;
+            cfg.http.maxRequestSize = 150_000_000L;
         }).start(port);
 
         new BadgeController(app);

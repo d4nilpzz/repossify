@@ -25,9 +25,10 @@ public class AuthRoute {
                     String base64 = authHeader.substring("Basic ".length());
                     String decoded = new String(java.util.Base64.getDecoder().decode(base64));
                     System.out.println(decoded);
-                    int idx = decoded.indexOf(':');
-                    if (idx >= 0) {
-                        secret = decoded.substring(0, idx);
+                    String[] split = decoded.split(":");
+
+                    if (split.length == 2) {
+                        secret = split[1];
                     }
                 } catch (IllegalArgumentException ignored) {}
             }

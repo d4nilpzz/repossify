@@ -30,7 +30,7 @@ public class BadgeController {
         if (color == null)  color = "40c14a";
         if (label == null)  label = repo;
         if (prefix == null) prefix = "";
-        if (rounded == null) prefix = "4";
+        if (rounded == null) rounded = "4";
 
         Path versionsDir = BASE_PATH
                 .resolve(type)
@@ -64,30 +64,35 @@ public class BadgeController {
     }
 
     private String svgBuilder(String label, String version, String color, String rounded) {
-        return """
-        <svg xmlns="http://www.w3.org/2000/svg" width="141" height="20" role="img" aria-label="%s: %s">
-          <title>%s: %s</title>
-          <linearGradient id="s" x2="0" y2="100%%">
-            <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
-            <stop offset="1" stop-opacity=".1"/>
-          </linearGradient>
-          <clipPath id="r">
-            <rect width="141" height="20" rx="%s" fill="#fff"/>
-          </clipPath>
-          <g clip-path="url(#r)">
-            <rect width="79" height="20" fill="#555"/>
-            <rect x="79" width="62" height="20" fill="#%s"/>
-            <rect width="141" height="20" fill="url(#s)"/>
-          </g>
-          <g fill="#fff" text-anchor="middle"
-             font-family="Verdana,Geneva,DejaVu Sans,sans-serif"
-             text-rendering="geometricPrecision" font-size="110">
-            <text x="395" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="570">%s</text>
-            <text x="395" y="140" transform="scale(.1)" textLength="570">%s</text>
-            <text x="1100" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="400">%s</text>
-            <text x="1100" y="140" transform="scale(.1)" textLength="400">%s</text>
-          </g>
-        </svg>
-        """.formatted(label, version, label, version, rounded, color, label, label, version, version);
+        int charWidth = 8;
+        int padding = 6;
+        int labelWidth = label.length() * charWidth + padding * 2;
+        int versionWidth = version.length() * charWidth + padding * 2;
+        int totalWidth = labelWidth + versionWidth;
+
+        rounded = rounded == null ? "4" : rounded;
+
+        String svg =
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + totalWidth + "\" height=\"20\" role=\"img\" aria-label=\"" + label + ": " + version + "\">" +
+                        "<title>" + label + ": " + version + "</title>" +
+                        "<linearGradient id=\"s\" x2=\"0\" y2=\"100%\">" +
+                        "<stop offset=\"0\" stop-color=\"#bbb\" stop-opacity=\".1\"/>" +
+                        "<stop offset=\"1\" stop-opacity=\".1\"/>" +
+                        "</linearGradient>" +
+                        "<clipPath id=\"r\">" +
+                        "<rect width=\"" + totalWidth + "\" height=\"20\" rx=\"" + rounded + "\" fill=\"#fff\"/>" +
+                        "</clipPath>" +
+                        "<g clip-path=\"url(#r)\">" +
+                        "<rect width=\"" + labelWidth + "\" height=\"20\" fill=\"#555\"/>" +
+                        "<rect x=\"" + labelWidth + "\" width=\"" + versionWidth + "\" height=\"20\" fill=\"#" + color + "\"/>" +
+                        "<rect width=\"" + totalWidth + "\" height=\"20\" fill=\"url(#s)\"/>" +
+                        "</g>" +
+                        "<g fill=\"#fff\" font-family=\"Verdana,Geneva,DejaVu Sans,sans-serif\" font-size=\"11\">" +
+                        "<text x=\"" + (labelWidth / 2) + "\" y=\"14\" text-anchor=\"middle\">" + label + "</text>" +
+                        "<text x=\"" + (labelWidth + versionWidth / 2) + "\" y=\"14\" text-anchor=\"middle\">" + version + "</text>" +
+                        "</g>" +
+                        "</svg>";
+
+        return svg;
     }
 }

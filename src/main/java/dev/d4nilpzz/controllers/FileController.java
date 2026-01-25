@@ -6,6 +6,7 @@ import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.utils.MavenUtils;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.http.UnauthorizedResponse;
 import io.javalin.http.UploadedFile;
 
 import java.io.File;
@@ -29,7 +30,10 @@ public class FileController {
         app.post("/api/file/upload", this::handleFileUpload);
         app.delete("/api/file/delete", this::handleDeletePath);
 
-        app.get("/repo/*", this::handleFileView);
+        app.get("/repo/*", ctx -> {
+            System.out.println(ctx.path());
+            handleFileView(ctx);
+        });
 
         app.put("/repo/*", ctx -> {
             AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
@@ -37,7 +41,7 @@ public class FileController {
         });
 
         app.head("/repo/*", ctx -> {
-            AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
+            System.out.println(ctx.path());
             handleMavenHead(ctx);
         });
     }
@@ -125,25 +129,23 @@ public class FileController {
         ctx.status(201);
     }
 
-    private void handleMavenHead(Context ctx) {
-        String fullPath = ctx.path();
+    private void handleMavenHead(Context ctx) throws IOException {
         String prefix = "/repo/";
-
-        if (!fullPath.startsWith(prefix)) {
+        if (!ctx.path().startsWith(prefix)) {
             ctx.status(400);
             return;
         }
 
-        String relativePath = fullPath.substring(prefix.length());
-
         Path base = BASE_PATH.toAbsolutePath().normalize();
-        Path target = base.resolve(relativePath).normalize();
+        Path target = base.resolve(ctx.path().substring(prefix.length())).normalize();
 
-        if (!target.startsWith(base) || !Files.exists(target)) {
+        if (!target.startsWith(base) || !Files.exists(target) || Files.isDirectory(target)) {
             ctx.status(404);
             return;
         }
 
+        ctx.header("Content-Length", String.valueOf(Files.size(target)));
+        ctx.header("Last-Modified", Files.getLastModifiedTime(target).toString());
         ctx.status(200);
     }
 
@@ -157,19 +159,34 @@ public class FileController {
         }
 
         String filePath = fullPath.substring(prefix.length());
-
         final Path BASE_PATH_VIEW = Paths.get("./data/repos").toAbsolutePath().normalize();
         Path target = BASE_PATH_VIEW.resolve(filePath).normalize();
+
         if (!target.startsWith(BASE_PATH_VIEW) || !Files.exists(target) || Files.isDirectory(target)) {
             ctx.status(404).result("File not found");
             return;
         }
 
+        if (filePath.startsWith("private/")) {
+            try {
+                AuthRoute.requireManagerOrWrite(ctx, "/repo/" + filePath, tokenService);
+            } catch (UnauthorizedResponse e) {
+                ctx.status(401).result("Unauthorized");
+                return;
+            }
+        }
+
         String contentType = Files.probeContentType(target);
         if (contentType == null) contentType = "application/octet-stream";
-        ctx.contentType(contentType);
+
+        if (target.toString().endsWith(".module")) {
+            ctx.contentType("application/vnd.gradle.module+json");
+        } else {
+            ctx.contentType(contentType);
+        }
         ctx.result(Files.newInputStream(target));
     }
+
 
     private void handleFileUpload(Context ctx) throws IOException {
         AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/file/upload", tokenService);

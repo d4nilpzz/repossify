@@ -4,7 +4,7 @@
   "group_id": "com.example",
   "description": "A powerful maven repository.",
   "avatar_url": "/public/repossify.png",
-  "domain": "https://maven.domain.dev/",
+  "domain_url": "http://localhost:8090/",
   "links": [
     {
       "url": "https://github.com/d4nilpzz/repossify",

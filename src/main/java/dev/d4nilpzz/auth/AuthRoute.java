@@ -16,7 +16,6 @@ public class AuthRoute {
         String secret = null;
 
         String authHeader = ctx.header("Authorization");
-        System.out.println(authHeader);
         if (authHeader != null) {
             if (authHeader.startsWith("Bearer ")) {
                 secret = authHeader.substring("Bearer ".length());
@@ -24,7 +23,6 @@ public class AuthRoute {
                 try {
                     String base64 = authHeader.substring("Basic ".length());
                     String decoded = new String(java.util.Base64.getDecoder().decode(base64));
-                    System.out.println(decoded);
                     String[] split = decoded.split(":");
 
                     if (split.length == 2) {

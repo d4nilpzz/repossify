@@ -8,6 +8,7 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.UploadedFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -29,7 +30,123 @@ public class FileController {
         app.delete("/api/file/delete", this::handleDeletePath);
 
         app.get("/repo/*", this::handleFileView);
+
+        app.put("/repo/*", ctx -> {
+            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
+            handleMavenPut(ctx);
+        });
+
+        app.head("/repo/*", ctx -> {
+            AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
+            handleMavenHead(ctx);
+        });
     }
+
+    private void handleMavenPut(Context ctx) throws IOException {
+        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
+
+        String fullPath = ctx.path();
+        String prefix = "/repo/";
+
+        if (!fullPath.startsWith(prefix)) {
+            ctx.status(400);
+            return;
+        }
+
+        String relativePath = fullPath.substring(prefix.length());
+
+        Path base = BASE_PATH.toAbsolutePath().normalize();
+        Path target = base.resolve(relativePath).normalize();
+
+        if (!target.startsWith(base)) {
+            ctx.status(403);
+            return;
+        }
+
+        Files.createDirectories(target.getParent());
+
+        byte[] data = ctx.bodyAsBytes();
+        Files.write(target, data, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        String filename = target.getFileName().toString();
+
+        if (
+                filename.endsWith(".jar") ||
+                        filename.endsWith(".war") ||
+                        filename.endsWith(".zip")
+        ) {
+            Path relative = base.relativize(target);
+
+            if (relative.getNameCount() >= 4) {
+                String repo = relative.getName(0).toString();
+
+                String version = relative.getName(relative.getNameCount() - 2).toString();
+                String artifactId = relative.getName(relative.getNameCount() - 3).toString();
+
+                Path groupPath = relative.subpath(1, relative.getNameCount() - 3);
+                String groupId = groupPath.toString().replace(File.separatorChar, '.');
+
+                Path artifactBase = base
+                        .resolve(repo)
+                        .resolve(groupId.replace('.', File.separatorChar))
+                        .resolve(artifactId);
+
+                Files.createDirectories(artifactBase);
+
+                Set<String> versions = loadExistingVersions(artifactBase);
+                versions.add(version);
+
+                Path metadataFile = artifactBase.resolve("maven-metadata.xml");
+                Files.writeString(
+                        metadataFile,
+                        MavenUtils.generateMavenMetadata(groupId, artifactId, versions),
+                        StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.TRUNCATE_EXISTING
+                );
+
+                // generar pom solo si no existe
+                Path pomPath = artifactBase
+                        .resolve(version)
+                        .resolve(artifactId + "-" + version + ".pom");
+
+                if (!Files.exists(pomPath)) {
+                    Files.createDirectories(pomPath.getParent());
+                    Files.writeString(
+                            pomPath,
+                            MavenUtils.generatePom(groupId, artifactId, version),
+                            StandardCharsets.UTF_8,
+                            StandardOpenOption.CREATE
+                    );
+                }
+            }
+        }
+
+        ctx.status(201);
+    }
+
+    private void handleMavenHead(Context ctx) {
+        String fullPath = ctx.path();
+        String prefix = "/repo/";
+
+        if (!fullPath.startsWith(prefix)) {
+            ctx.status(400);
+            return;
+        }
+
+        String relativePath = fullPath.substring(prefix.length());
+
+        Path base = BASE_PATH.toAbsolutePath().normalize();
+        Path target = base.resolve(relativePath).normalize();
+
+        if (!target.startsWith(base) || !Files.exists(target)) {
+            ctx.status(404);
+            return;
+        }
+
+        ctx.status(200);
+    }
+
 
     private void handleFileView(Context ctx) throws IOException {
         String fullPath = ctx.path();

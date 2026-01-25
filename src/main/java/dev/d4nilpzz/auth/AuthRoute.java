@@ -16,8 +16,21 @@ public class AuthRoute {
         String secret = null;
 
         String authHeader = ctx.header("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            secret = authHeader.substring("Bearer ".length());
+        System.out.println(authHeader);
+        if (authHeader != null) {
+            if (authHeader.startsWith("Bearer ")) {
+                secret = authHeader.substring("Bearer ".length());
+            } else if (authHeader.startsWith("Basic ")) {
+                try {
+                    String base64 = authHeader.substring("Basic ".length());
+                    String decoded = new String(java.util.Base64.getDecoder().decode(base64));
+                    System.out.println(decoded);
+                    int idx = decoded.indexOf(':');
+                    if (idx >= 0) {
+                        secret = decoded.substring(0, idx);
+                    }
+                } catch (IllegalArgumentException ignored) {}
+            }
         }
 
         if (secret == null) {
@@ -47,4 +60,5 @@ public class AuthRoute {
 
         return token;
     }
+
 }

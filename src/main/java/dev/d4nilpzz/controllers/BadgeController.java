@@ -1,5 +1,6 @@
 package dev.d4nilpzz.controllers;
 
+import dev.d4nilpzz.Repossify;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 
@@ -9,7 +10,7 @@ import java.util.Comparator;
 
 public class BadgeController {
 
-    private static final Path BASE_PATH = Paths.get("./data/repos");
+    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
 
     public BadgeController(Javalin app) {
         app.get("/api/badge/latest/{type}/{channel}/{owner}/{repo}", this::handleLatest);

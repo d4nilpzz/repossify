@@ -3,36 +3,55 @@ package dev.d4nilpzz;
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
 import dev.d4nilpzz.controllers.*;
-import dev.d4nilpzz.middleware.RateLimitMiddleware;
 import dev.d4nilpzz.params.ParamParser;
+import dev.d4nilpzz.utils.RepossifyBanner;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import java.net.InetAddress;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Repossify {
     public static final String VERSION = "1.0.0";
     private static final Logger LOGGER = LoggerFactory.getLogger(Repossify.class);
+    private static final String[] AUTHORS = {"d4nilpzz"};
 
-    public static void main(String[] args)
-    {
+    public static Path WORKING_DIR = Paths.get("./").toAbsolutePath().normalize();
+    public static Long MAX_REQUEST_SIZE = 150_000_000L;
+
+    public static void main(String[] args) {
         RepossifyArgs parsed = new RepossifyArgs();
         ParamParser.parse(args, parsed);
 
-        if (parsed.init) {
-            if (!Files.exists(Paths.get("./repossify.properties"))) {
-                LOGGER.info("Initializing Repossify...");
-                RepossifyInit.init();
-                LOGGER.info("Initialization completed.");
-            } else {
-                LOGGER.warn("Properties file already exists. Initialization skipped.");
-            }
-
+        if (parsed.version) {
+            LOGGER.info("Repossify {}", VERSION);
             return;
         }
+
+        RepossifyBanner.print(VERSION, AUTHORS);
+
+        if (parsed.maxRequestSize != null) {
+            MAX_REQUEST_SIZE = Long.parseLong(parsed.maxRequestSize);
+            LOGGER.info("MaxRequestSize has change to: {}", MAX_REQUEST_SIZE);
+        }
+
+        if (parsed.workingDirectory != null) {
+            WORKING_DIR = Paths.get(parsed.workingDirectory).toAbsolutePath().normalize();
+        }
+        LOGGER.info("Working directory: {}", WORKING_DIR);
+
+        Path db = WORKING_DIR.resolve("repossify.db");
+        Path page = WORKING_DIR.resolve("page.json");
+
+        if (Files.notExists(db) || Files.notExists(page)) {
+            LOGGER.info("Missing files detected, running init...");
+            RepossifyInit.init(WORKING_DIR);
+        }
+
 
         run(parsed);
     }
@@ -40,8 +59,16 @@ public class Repossify {
     private static void run(RepossifyArgs args)
     {
         int port = 8080;
-        int REQUEST_PER_SECOND = 2;
         String hostname;
+
+        if (args.workingDirectory != null) {
+            WORKING_DIR = Paths.get(args.workingDirectory).toAbsolutePath().normalize();
+        }
+        LOGGER.info("Working directory: {}", WORKING_DIR);
+
+        if (args.port != null) {
+            port = Integer.parseInt(args.port);
+        }
 
         try {
             hostname = InetAddress.getLocalHost().getHostAddress();
@@ -49,25 +76,14 @@ public class Repossify {
             hostname = "localhost";
         }
 
-        try {
-            RepossifyConfig cfg = new RepossifyConfig(Paths.get("./repossify.properties"));
-
-            port = Integer.parseInt(
-                    args.port != null ? args.port : cfg.get("port", String.valueOf(port))
-            );
-
-            REQUEST_PER_SECOND = Integer.parseInt(cfg.get("requestsPerSecond", String.valueOf(REQUEST_PER_SECOND)));
-
-            hostname = args.hostname != null
-                    ? args.hostname
-                    : cfg.get("hostname", hostname);
-
-        } catch (Exception ignored) {
+        if (args.hostname != null) {
+            hostname = args.hostname;
         }
 
         TokenService tokenService;
         try {
-            tokenService = new TokenService("jdbc:sqlite:data/repossify.db");
+            Path dbPath = WORKING_DIR.resolve("repossify.db");
+            tokenService = new TokenService("jdbc:sqlite:" + dbPath.toAbsolutePath());
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
             return;
@@ -76,7 +92,7 @@ public class Repossify {
         Javalin app = Javalin.create(cfg ->{
             cfg.staticFiles.add("/static");
             cfg.showJavalinBanner = false;
-            cfg.http.maxRequestSize = 150_000_000L;
+            cfg.http.maxRequestSize = MAX_REQUEST_SIZE;
         }).start(port);
 
         new BadgeController(app);

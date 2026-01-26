@@ -3,6 +3,7 @@ package dev.d4nilpzz.controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import dev.d4nilpzz.Repossify;
 import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
@@ -17,8 +18,8 @@ import java.util.Set;
 
 public class ConfigController {
 
-    private static final Path PAGE_CONFIG_PATH = Paths.get("./data/page.json");
-    private static final Path REPOS_BASE_PATH = Paths.get("./data/repos");
+    private static final Path PAGE_CONFIG_PATH = Paths.get(Repossify.WORKING_DIR+"/page.json");
+    private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final TokenService tokenService;

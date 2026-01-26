@@ -1,5 +1,6 @@
 package dev.d4nilpzz.controllers;
 
+import dev.d4nilpzz.Repossify;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.repos.RepositoryData;
@@ -65,7 +66,8 @@ public class PageController {
 
     private List<RepositoryData.Repository> loadRepositoriesWithPrivacy() throws Exception {
         List<RepositoryData.Repository> repos = new ArrayList<>();
-        File reposDir = new File("./data/repos");
+
+        File reposDir = new File(Repossify.WORKING_DIR+"/repos");
 
         if (!reposDir.exists() || !reposDir.isDirectory()) return repos;
 

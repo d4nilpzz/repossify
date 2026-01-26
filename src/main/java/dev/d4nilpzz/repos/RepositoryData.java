@@ -2,6 +2,7 @@ package dev.d4nilpzz.repos;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.d4nilpzz.Repossify;
 
 import java.io.File;
 import java.io.IOException;
@@ -24,7 +25,7 @@ public class RepositoryData {
     public List<Repository> repositories;
 
     public static RepositoryData loadPageConfig() throws IOException {
-        return mapper.readValue(new File("./data/page.json"), RepositoryData.class);
+        return mapper.readValue(new File(Repossify.WORKING_DIR+"/page.json"), RepositoryData.class);
     }
 
     private static List<TreeNode> loadRepoTree(Path rootPath, Path currentPath, String basePath) throws IOException {
@@ -68,7 +69,7 @@ public class RepositoryData {
 
     public static List<Repository> loadRepositories() throws IOException {
         List<Repository> repos = new ArrayList<>();
-        File reposDir = new File("./data/repos");
+        File reposDir = new File(Repossify.WORKING_DIR+"/repos");
 
         if (!reposDir.exists() || !reposDir.isDirectory()) {
             return repos;

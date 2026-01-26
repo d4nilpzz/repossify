@@ -1,19 +1,9 @@
 package dev.d4nilpzz.utils;
 
-import java.util.Arrays;
-
 public class RepossifyBanner {
 
     public static void print(String version, String[] authors) {
-        String authorsStr = Arrays.stream(authors)
-                .toList()
-                .toString()
-                .replace("[", "")
-                .replace("]", ","); // queda "a, b, c,"
-
-        if (!authorsStr.isEmpty()) {
-            authorsStr = authorsStr.substring(0, authorsStr.length() - 1);
-        }
+        String authorsStr = String.join(", ", authors);
         System.out.println("""
                   \s
                   _____                          _  __              Repossify %version% \s

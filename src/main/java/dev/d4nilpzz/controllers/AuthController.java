@@ -2,6 +2,7 @@ package dev.d4nilpzz.controllers;
 
 import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.utils.LogFile;
 import io.javalin.Javalin;
 import io.javalin.http.Cookie;
 import io.javalin.http.UnauthorizedResponse;
@@ -46,6 +47,8 @@ public class AuthController {
             String secret = authHeader.substring("Bearer ".length());
             AccessToken token = tokenService.getTokenBySecret(secret);
             if (token == null) {
+                LogFile.warn(this.getClass(), ctx.ip()+" tried to sign in with invalid token.");
+
                 throw new UnauthorizedResponse("Invalid token");
             }
 
@@ -54,6 +57,7 @@ public class AuthController {
             cookie.setPath("/");
             cookie.setMaxAge(SESSION_TTL_SECONDS);
 
+            LogFile.info(this.getClass(), "New session opened by "+ctx.ip());
             ctx.cookie(cookie);
             ctx.json(token);
         });

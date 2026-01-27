@@ -4,6 +4,7 @@ import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
 import dev.d4nilpzz.controllers.*;
 import dev.d4nilpzz.params.ParamParser;
+import dev.d4nilpzz.utils.LogFile;
 import dev.d4nilpzz.utils.RepossifyBanner;
 import io.javalin.Javalin;
 import org.slf4j.Logger;
@@ -94,6 +95,8 @@ public class Repossify {
             cfg.showJavalinBanner = false;
             cfg.http.maxRequestSize = MAX_REQUEST_SIZE;
         }).start(port);
+
+        LogFile.info(Repossify.class, "Repossify started on port: "+port);
 
         new BadgeController(app);
         new PageController(tokenService).registerRoutes(app);

@@ -7,6 +7,7 @@ import dev.d4nilpzz.Repossify;
 import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.utils.LogFile;
 import io.javalin.Javalin;
 
 import java.nio.file.DirectoryStream;
@@ -67,6 +68,8 @@ public class ConfigController {
 
             mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(PAGE_CONFIG_PATH.toFile(), newConfig);
+
+            LogFile.info(this.getClass(), ctx.ip()+" updated the config");
 
             ctx.json(newConfig);
         });

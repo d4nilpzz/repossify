@@ -33,6 +33,9 @@ build/
 .DS_Store
 
 ### Run ###
-data
+/data/
+/logs/
+/plugins/
+/repos/
 repossify.properties
 repossify.db

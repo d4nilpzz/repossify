@@ -4,8 +4,10 @@ import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
 import dev.d4nilpzz.controllers.*;
 import dev.d4nilpzz.params.ParamParser;
+import dev.d4nilpzz.utils.LogFile;
 import dev.d4nilpzz.utils.RepossifyBanner;
 import io.javalin.Javalin;
+import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -52,12 +54,10 @@ public class Repossify {
             RepossifyInit.init(WORKING_DIR);
         }
 
-
         run(parsed);
     }
 
-    private static void run(RepossifyArgs args)
-    {
+    private static void run(RepossifyArgs args) {
         int port = 8080;
         String hostname;
 
@@ -89,11 +89,19 @@ public class Repossify {
             return;
         }
 
-        Javalin app = Javalin.create(cfg ->{
+        Javalin app = Javalin.create(cfg -> {
             cfg.staticFiles.add("/static");
             cfg.showJavalinBanner = false;
             cfg.http.maxRequestSize = MAX_REQUEST_SIZE;
+
+            cfg.staticFiles.add(staticFiles -> {
+                staticFiles.hostedPath = "/content";
+                staticFiles.directory = WORKING_DIR.resolve("content").toString();
+                staticFiles.location = Location.EXTERNAL;
+            });
         }).start(port);
+
+        LogFile.info(Repossify.class, "Repossify started on port: " + port);
 
         new BadgeController(app);
         new PageController(tokenService).registerRoutes(app);

@@ -4,13 +4,11 @@ import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
 import dev.d4nilpzz.controllers.*;
 import dev.d4nilpzz.params.ParamParser;
-import dev.d4nilpzz.utils.LogFile;
 import dev.d4nilpzz.utils.RepossifyBanner;
 import io.javalin.Javalin;
 import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 
 import java.net.InetAddress;
 import java.nio.file.Files;
@@ -44,6 +42,7 @@ public class Repossify {
         if (parsed.workingDirectory != null) {
             WORKING_DIR = Paths.get(parsed.workingDirectory).toAbsolutePath().normalize();
         }
+
         LOGGER.info("Working directory: {}", WORKING_DIR);
 
         Path db = WORKING_DIR.resolve("repossify.db");
@@ -60,11 +59,6 @@ public class Repossify {
     private static void run(RepossifyArgs args) {
         int port = 8080;
         String hostname;
-
-        if (args.workingDirectory != null) {
-            WORKING_DIR = Paths.get(args.workingDirectory).toAbsolutePath().normalize();
-        }
-        LOGGER.info("Working directory: {}", WORKING_DIR);
 
         if (args.port != null) {
             port = Integer.parseInt(args.port);
@@ -101,7 +95,7 @@ public class Repossify {
             });
         }).start(port);
 
-        LogFile.info(Repossify.class, "Repossify started on port: " + port);
+        LOGGER.info("Repossify started on port: {}", port);
 
         new BadgeController(app);
         new PageController(tokenService).registerRoutes(app);

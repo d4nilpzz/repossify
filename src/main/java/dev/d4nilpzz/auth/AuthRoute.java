@@ -6,11 +6,11 @@ import io.javalin.http.UnauthorizedResponse;
 
 public class AuthRoute {
     /**
-     * Obtiene el token desde header/cookie y verifica permisos de manager o write en la ruta.
-     * @param ctx Context de Javalin
-     * @param route Ruta que quieres proteger
-     * @param tokenService TokenService para obtener el AccessToken
-     * @return AccessToken válido
+     * Retrieves the token from header/cookie and checks for manager or write permissions on the route.
+     * @param ctx Javalin context
+     * @param route Route you want to protect
+     * @param tokenService TokenService used to obtain the AccessToken
+     * @return Valid AccessToken
      */
     public static AccessToken requireManagerOrWrite(Context ctx, String route, TokenService tokenService) {
         String secret = null;

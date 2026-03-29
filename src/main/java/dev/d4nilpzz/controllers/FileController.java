@@ -31,20 +31,14 @@ public class FileController {
         app.post("/api/file/upload", this::handleFileUpload);
         app.delete("/api/file/delete", this::handleDeletePath);
 
-        app.get("/repo/*", ctx -> {
-            System.out.println(ctx.path());
-            handleFileView(ctx);
-        });
+        app.get("/repo/*", this::handleFileView);
 
         app.put("/repo/*", ctx -> {
             AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
             handleMavenPut(ctx);
         });
 
-        app.head("/repo/*", ctx -> {
-            System.out.println(ctx.path());
-            handleMavenHead(ctx);
-        });
+        app.head("/repo/*", this::handleMavenHead);
     }
 
     private void handleMavenPut(Context ctx) throws IOException {

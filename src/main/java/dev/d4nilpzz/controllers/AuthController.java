@@ -2,12 +2,14 @@ package dev.d4nilpzz.controllers;
 
 import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.TokenService;
-import dev.d4nilpzz.utils.LogFile;
 import io.javalin.Javalin;
 import io.javalin.http.Cookie;
 import io.javalin.http.UnauthorizedResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AuthController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
     private static final String SESSION_COOKIE = "repossify_session";
     private static final int SESSION_TTL_SECONDS = 60 * 30;
 
@@ -47,7 +49,7 @@ public class AuthController {
             String secret = authHeader.substring("Bearer ".length());
             AccessToken token = tokenService.getTokenBySecret(secret);
             if (token == null) {
-                LogFile.warn(this.getClass(), ctx.ip()+" tried to sign in with invalid token.");
+                LOGGER.warn("{} tried to sign in with invalid token.", ctx.ip());
 
                 throw new UnauthorizedResponse("Invalid token");
             }
@@ -57,7 +59,7 @@ public class AuthController {
             cookie.setPath("/");
             cookie.setMaxAge(SESSION_TTL_SECONDS);
 
-            LogFile.info(this.getClass(), "New session opened by "+ctx.ip());
+            LOGGER.info("New session opened by {}", ctx.ip());
             ctx.cookie(cookie);
             ctx.json(token);
         });

@@ -7,8 +7,9 @@ import dev.d4nilpzz.Repossify;
 import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
-import dev.d4nilpzz.utils.LogFile;
 import io.javalin.Javalin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -18,7 +19,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ConfigController {
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConfigController.class);
     private static final Path PAGE_CONFIG_PATH = Paths.get(Repossify.WORKING_DIR+"/page.json");
     private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -69,7 +70,7 @@ public class ConfigController {
             mapper.writerWithDefaultPrettyPrinter()
                     .writeValue(PAGE_CONFIG_PATH.toFile(), newConfig);
 
-            LogFile.info(this.getClass(), ctx.ip()+" updated the config");
+            LOGGER.info("{} updated the config", ctx.ip());
 
             ctx.json(newConfig);
         });

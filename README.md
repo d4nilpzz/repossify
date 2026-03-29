@@ -1,7 +1,14 @@
-### Repossify
-Repossify is a Maven repository designed for the efficient management, storage, and distribution of Java artifacts. The backend is fully implemented in Java, ensuring robustness, scalability, and full compatibility with the standard Maven ecosystem.
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/ba7744d0-eba7-446a-a6ef-0be88da24980" alt="MAS Logo" width="120" height="120">
+</p>
 
-<div>
+<h1 align="center">Repossify</h1>
+
+<p align="center">
+  Repossify is a Maven repository designed for the efficient management, storage, and distribution of Java artifacts. The backend is fully implemented in Java, ensuring robustness, scalability, and full compatibility with the standard Maven ecosystem.
+</p>
+
+<div align="center">
   <a href="https://repossify.dev">Website</a>
   ·
   <a href="https://repossify.dev/docs/">Official Guide</a>

@@ -59,7 +59,7 @@ public class CommandConsole implements Runnable {
      *
      * @param input raw command input from the user
      */
-    private void handleCommand(String input) {
+    void handleCommand(String input) {
         if (input.isEmpty()) return;
 
         String[] parts = input.split("\\s+");

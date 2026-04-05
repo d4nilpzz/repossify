@@ -2,6 +2,7 @@ package dev.d4nilpzz;
 
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.CommandConsole;
+import dev.d4nilpzz.console.ConsoleBridge;
 import dev.d4nilpzz.controllers.*;
 import dev.d4nilpzz.params.ParamParser;
 import dev.d4nilpzz.utils.RepossifyBanner;
@@ -102,6 +103,9 @@ public class Repossify {
         new ConfigController(tokenService).registerRoutes(app);
         new AuthController(tokenService).registerRoutes(app);
         new FileController(tokenService).registerRoutes(app);
+
+        new ClientConsoleController(tokenService, new ConsoleBridge(new CommandConsole(tokenService))).registerRoutes(app);
+
 
         new Thread(new CommandConsole(tokenService), "console").start();
 

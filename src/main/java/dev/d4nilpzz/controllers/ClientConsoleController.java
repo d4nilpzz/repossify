@@ -27,8 +27,14 @@ public class ClientConsoleController {
     public void registerRoutes(Javalin app) {
 
         app.ws("/api/console/ws", ws -> {
-            ws.onConnect(ctx -> clients.add(ctx));
-            ws.onClose(ctx -> clients.remove(ctx));
+            ws.onConnect(ctx -> {
+                AccessToken token = AuthRoute.requireManagerOrWrite(ctx.getUpgradeCtx$javalin(), "/", tokenService);
+                clients.add(ctx);
+            });
+            ws.onClose(ctx -> {
+                AccessToken token = AuthRoute.requireManagerOrWrite(ctx.getUpgradeCtx$javalin(), "/", tokenService);
+                clients.remove(ctx);
+            });
         });
 
         app.post("/api/console/exec", ctx -> {

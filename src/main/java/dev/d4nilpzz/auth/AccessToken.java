@@ -4,8 +4,8 @@ import java.time.Instant;
 import java.util.List;
 
 public class AccessToken {
-    public int id;
-    public String type;
+    public final int id;
+    public final String type;
     public final String name;
     public final String secret;
     public final String createdAt;

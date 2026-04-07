@@ -2,7 +2,6 @@ package dev.d4nilpzz.console;
 
 import com.sun.management.OperatingSystemMXBean;
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

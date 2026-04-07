@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
 import io.javalin.Javalin;

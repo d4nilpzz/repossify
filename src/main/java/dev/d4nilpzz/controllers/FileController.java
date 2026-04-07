@@ -1,7 +1,6 @@
 package dev.d4nilpzz.controllers;
 
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.utils.MavenUtils;
@@ -16,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class FileController {
@@ -206,7 +206,7 @@ public class FileController {
             return;
         }
 
-        Path targetDir = BASE_PATH.resolve(repo).resolve(path);
+        Path targetDir = BASE_PATH.resolve(Objects.requireNonNull(repo)).resolve(Objects.requireNonNull(path));
         Files.createDirectories(targetDir);
 
         Path targetFile = targetDir.resolve(file.filename());
@@ -214,8 +214,8 @@ public class FileController {
 
         Path artifactBase = BASE_PATH
                 .resolve(repo)
-                .resolve(groupId.replace('.', '/'))
-                .resolve(artifactId);
+                .resolve(Objects.requireNonNull(groupId).replace('.', '/'))
+                .resolve(Objects.requireNonNull(artifactId));
 
         Files.createDirectories(artifactBase);
 
@@ -233,7 +233,7 @@ public class FileController {
 
         if (generatePom) {
             Path pomPath = artifactBase
-                    .resolve(version)
+                    .resolve(Objects.requireNonNull(version))
                     .resolve(artifactId + "-" + version + ".pom");
 
             Files.createDirectories(pomPath.getParent());

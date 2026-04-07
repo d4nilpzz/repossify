@@ -106,7 +106,6 @@ public class Repossify {
 
         new ClientConsoleController(tokenService, new ConsoleBridge(new CommandConsole(tokenService))).registerRoutes(app);
 
-
         new Thread(new CommandConsole(tokenService), "console").start();
 
         LOGGER.info("Running on http://{}:{}", hostname, port);

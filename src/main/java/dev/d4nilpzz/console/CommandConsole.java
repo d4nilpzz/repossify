@@ -121,7 +121,6 @@ public class CommandConsole implements Runnable {
                 LOGGER.info("""
                         Available commands:
                         ➜ help or ?
-                        ➜ stop
                         ➜ docs
                         ➜ version
                         ➜ generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
@@ -135,12 +134,6 @@ public class CommandConsole implements Runnable {
                         ➜ performance
                         """);
                 break;
-            case "stop":
-                LOGGER.info("Stopping Repossify...");
-                running = false;
-                System.exit(0);
-                break;
-
             case "docs":
                 LOGGER.info("https://github.com/d4nilpzz/repossify/");
                 break;

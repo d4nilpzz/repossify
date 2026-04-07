@@ -9,15 +9,13 @@ import io.javalin.http.ContentType;
 import io.javalin.http.Context;
 
 import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 public class PageController {
     private final TokenService tokenService;
@@ -67,7 +65,7 @@ public class PageController {
     private List<RepositoryData.Repository> loadRepositoriesWithPrivacy() throws Exception {
         List<RepositoryData.Repository> repos = new ArrayList<>();
 
-        File reposDir = new File(Repossify.WORKING_DIR+"/repos");
+        File reposDir = new File(Repossify.WORKING_DIR + "/repos");
 
         if (!reposDir.exists() || !reposDir.isDirectory()) return repos;
 
@@ -86,7 +84,7 @@ public class PageController {
                     .filter(r -> r.name.equals(repo.name))
                     .findFirst().orElse(null);
 
-            repo.isPrivate = savedRepo != null ? savedRepo.isPrivate : false;
+            repo.isPrivate = savedRepo != null && savedRepo.isPrivate;
 
             repos.add(repo);
         }

@@ -7,8 +7,9 @@ import io.javalin.http.UnauthorizedResponse;
 public class AuthRoute {
     /**
      * Retrieves the token from header/cookie and checks for manager or write permissions on the route.
-     * @param ctx Javalin context
-     * @param route Route you want to protect
+     *
+     * @param ctx          Javalin context
+     * @param route        Route you want to protect
      * @param tokenService TokenService used to obtain the AccessToken
      * @return Valid AccessToken
      */
@@ -28,7 +29,8 @@ public class AuthRoute {
                     if (split.length == 2) {
                         secret = split[1];
                     }
-                } catch (IllegalArgumentException ignored) {}
+                } catch (IllegalArgumentException ignored) {
+                }
             }
         }
 

@@ -21,7 +21,8 @@ public class ConsoleBridge {
 
         try {
             console.handleCommand(command);
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         System.out.flush();
         System.setOut(originalOut);

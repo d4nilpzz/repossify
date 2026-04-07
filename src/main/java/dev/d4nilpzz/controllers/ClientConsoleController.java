@@ -1,7 +1,8 @@
 package dev.d4nilpzz.controllers;
 
+import dev.d4nilpzz.auth.AuthRoute;
+import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.ConsoleBridge;
-import dev.d4nilpzz.auth.*;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
 import org.slf4j.Logger;
@@ -11,9 +12,6 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientConsoleController {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClientConsoleController.class);
-
     private final TokenService tokenService;
     private final ConsoleBridge bridge;
 
@@ -28,17 +26,17 @@ public class ClientConsoleController {
 
         app.ws("/api/console/ws", ws -> {
             ws.onConnect(ctx -> {
-                AccessToken token = AuthRoute.requireManagerOrWrite(ctx.getUpgradeCtx$javalin(), "/", tokenService);
+                AuthRoute.requireManagerOrWrite(ctx.getUpgradeCtx$javalin(), "/", tokenService);
                 clients.add(ctx);
             });
             ws.onClose(ctx -> {
-                AccessToken token = AuthRoute.requireManagerOrWrite(ctx.getUpgradeCtx$javalin(), "/", tokenService);
+                AuthRoute.requireManagerOrWrite(ctx.getUpgradeCtx$javalin(), "/", tokenService);
                 clients.remove(ctx);
             });
         });
 
         app.post("/api/console/exec", ctx -> {
-            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
+            AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
 
             String cmd = ctx.body();
 
@@ -55,7 +53,8 @@ public class ClientConsoleController {
         for (WsContext client : clients) {
             try {
                 client.send(msg);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
     }
 }

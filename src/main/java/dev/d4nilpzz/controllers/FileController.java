@@ -20,7 +20,7 @@ import java.util.Set;
 
 public class FileController {
 
-    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
+    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
     private final TokenService tokenService;
 
     public FileController(TokenService tokenService) {
@@ -154,7 +154,7 @@ public class FileController {
         }
 
         String filePath = fullPath.substring(prefix.length());
-        final Path BASE_PATH_VIEW = Paths.get(Repossify.WORKING_DIR+"/repos").toAbsolutePath().normalize();
+        final Path BASE_PATH_VIEW = Paths.get(Repossify.WORKING_DIR + "/repos").toAbsolutePath().normalize();
         Path target = BASE_PATH_VIEW.resolve(filePath).normalize();
 
         if (!target.startsWith(BASE_PATH_VIEW) || !Files.exists(target) || Files.isDirectory(target)) {
@@ -284,7 +284,8 @@ public class FileController {
                 .forEach(p -> {
                     try {
                         Files.delete(p);
-                    } catch (IOException ignored) {}
+                    } catch (IOException ignored) {
+                    }
                 });
 
         ctx.status(204);

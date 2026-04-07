@@ -5,31 +5,33 @@ import io.javalin.Javalin;
 import io.javalin.http.Context;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Comparator;
 
 public class BadgeController {
 
-    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
+    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
 
     public BadgeController(Javalin app) {
         app.get("/api/badge/latest/{type}/{channel}/{owner}/{repo}", this::handleLatest);
     }
 
     private void handleLatest(Context ctx) {
-        String type    = ctx.pathParam("type");
+        String type = ctx.pathParam("type");
         String channel = ctx.pathParam("channel");
-        String owner   = ctx.pathParam("owner");
-        String repo    = ctx.pathParam("repo");
+        String owner = ctx.pathParam("owner");
+        String repo = ctx.pathParam("repo");
 
-        String color  = ctx.queryParam("color");
-        String label  = ctx.queryParam("label");
+        String color = ctx.queryParam("color");
+        String label = ctx.queryParam("label");
         String prefix = ctx.queryParam("prefix");
         String filter = ctx.queryParam("filter");
         String rounded = ctx.queryParam("r");
 
-        if (color == null)  color = "40c14a";
-        if (label == null)  label = repo;
+        if (color == null) color = "40c14a";
+        if (label == null) label = repo;
         if (prefix == null) prefix = "";
         if (rounded == null) rounded = "4";
 
@@ -41,7 +43,7 @@ public class BadgeController {
 
         if (!Files.isDirectory(versionsDir)) {
             ctx.contentType("image/svg+xml");
-            String svg = svgBuilder(label,"unknown", color, rounded);
+            String svg = svgBuilder(label, "unknown", color, rounded);
             ctx.result(svg);
             return;
         }

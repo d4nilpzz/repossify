@@ -1,18 +1,13 @@
 package dev.d4nilpzz.console;
 
+import com.sun.management.OperatingSystemMXBean;
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sun.management.OperatingSystemMXBean;
-
 import java.io.File;
 import java.lang.management.ManagementFactory;
-
-import java.nio.file.FileStore;
-import java.nio.file.FileSystems;
 import java.util.*;
 
 /**
@@ -22,10 +17,9 @@ import java.util.*;
  */
 public class CommandConsole implements Runnable {
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandConsole.class);
+    private static final int BAR_LENGTH = 50;
     private final TokenService tokenService;
     private volatile boolean running = true;
-
-    private static final int BAR_LENGTH = 50;
 
     /**
      * Constructs a CommandConsole instance with the given TokenService.
@@ -34,6 +28,61 @@ public class CommandConsole implements Runnable {
      */
     public CommandConsole(TokenService tokenService) {
         this.tokenService = tokenService;
+    }
+
+    /**
+     * Processes a single console command, parses its arguments,
+     * and dispatches execution to the corresponding handler.
+     */
+    private static void performance() {
+        Runtime rt = Runtime.getRuntime();
+        OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+        // CPU: medir % usado por el proceso respetando cores limitados
+        int cpuCores = Math.min(rt.availableProcessors(), 2); // ActiveProcessorCount=2
+        double cpuUsage = 0.0;
+        try {
+            long startTime = System.nanoTime();
+            long startCpu = os.getProcessCpuTime();
+            Thread.sleep(100); // breve espera
+            long endTime = System.nanoTime();
+            long endCpu = os.getProcessCpuTime();
+            cpuUsage = (endCpu - startCpu) / (double) (endTime - startTime) / 1_000_000_000.0 / cpuCores;
+            cpuUsage = Math.min(cpuUsage, 1.0); // máximo 100%
+        } catch (Exception ignored) {
+        }
+        int cpuPercent = (int) Math.round(cpuUsage * 100);
+        String cpuBar = buildBar(cpuPercent);
+
+        // Memoria de la JVM en GB
+        double usedMem = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0 / 1024.0;
+        double maxMem = rt.maxMemory() / 1024.0 / 1024.0 / 1024.0;
+        int memPercent = maxMem == 0 ? 0 : (int) ((usedMem * 100) / maxMem);
+        String memBar = buildBar(memPercent);
+
+        String currentDir = System.getProperty("user.dir");
+        File jarDrive = new File(currentDir).getAbsoluteFile().toPath().getRoot().toFile();
+        long totalStore = jarDrive.getTotalSpace() / 1024 / 1024 / 1024; // GB
+        long usedStore = (totalStore - jarDrive.getUsableSpace() / 1024 / 1024 / 1024); // GB
+        int storePercent = totalStore == 0 ? 0 : (int) ((usedStore * 100) / totalStore);
+        String storeBar = buildBar(storePercent);
+
+        System.out.printf(
+                "CPU     [ %s ] %d%% (%d cores)%n" +
+                        "Memory  [ %s ] %.2f/%.2f GB%n" +
+                        "Storage [ %s ] %d GB / %d GB%n",
+                cpuBar, cpuPercent, cpuCores,
+                memBar, usedMem, maxMem,
+                storeBar, usedStore, totalStore
+        );
+    }
+
+    private static String buildBar(int percent) {
+        int filled = (percent * CommandConsole.BAR_LENGTH) / 100;
+        StringBuilder bar = new StringBuilder();
+        bar.repeat("|", Math.max(0, filled));
+        bar.repeat(" ", Math.max(0, CommandConsole.BAR_LENGTH - filled));
+        return bar.toString();
     }
 
     /**
@@ -59,7 +108,7 @@ public class CommandConsole implements Runnable {
      *
      * @param input raw command input from the user
      */
-    private void handleCommand(String input) {
+    void handleCommand(String input) {
         if (input.isEmpty()) return;
 
         String[] parts = input.split("\\s+");
@@ -72,7 +121,6 @@ public class CommandConsole implements Runnable {
                 LOGGER.info("""
                         Available commands:
                         ➜ help or ?
-                        ➜ stop
                         ➜ docs
                         ➜ version
                         ➜ generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
@@ -86,12 +134,6 @@ public class CommandConsole implements Runnable {
                         ➜ performance
                         """);
                 break;
-            case "stop":
-                LOGGER.info("Stopping Repossify...");
-                running = false;
-                System.exit(0);
-                break;
-
             case "docs":
                 LOGGER.info("https://github.com/d4nilpzz/repossify/");
                 break;
@@ -222,60 +264,6 @@ public class CommandConsole implements Runnable {
     }
 
     /**
-     * Processes a single console command, parses its arguments,
-     * and dispatches execution to the corresponding handler.
-     */
-    private static void performance() {
-        Runtime rt = Runtime.getRuntime();
-        OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-
-        // CPU: medir % usado por el proceso respetando cores limitados
-        int cpuCores = Math.min(rt.availableProcessors(), 2); // ActiveProcessorCount=2
-        double cpuUsage = 0.0;
-        try {
-            long startTime = System.nanoTime();
-            long startCpu = os.getProcessCpuTime();
-            Thread.sleep(100); // breve espera
-            long endTime = System.nanoTime();
-            long endCpu = os.getProcessCpuTime();
-            cpuUsage = (endCpu - startCpu) / (double)(endTime - startTime) / 1_000_000_000.0 / cpuCores;
-            cpuUsage = Math.min(cpuUsage, 1.0); // máximo 100%
-        } catch (Exception ignored) {}
-        int cpuPercent = (int) Math.round(cpuUsage * 100);
-        String cpuBar = buildBar(cpuPercent, BAR_LENGTH);
-
-        // Memoria de la JVM en GB
-        double usedMem = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0 / 1024.0;
-        double maxMem = rt.maxMemory() / 1024.0 / 1024.0 / 1024.0;
-        int memPercent = maxMem == 0 ? 0 : (int) ((usedMem * 100) / maxMem);
-        String memBar = buildBar(memPercent, BAR_LENGTH);
-
-        String currentDir = System.getProperty("user.dir");
-        File jarDrive = new File(currentDir).getAbsoluteFile().toPath().getRoot().toFile();
-        long totalStore = jarDrive.getTotalSpace() / 1024 / 1024 / 1024; // GB
-        long usedStore = (totalStore - jarDrive.getUsableSpace() / 1024 / 1024 / 1024); // GB
-        int storePercent = totalStore == 0 ? 0 : (int) ((usedStore * 100) / totalStore);
-        String storeBar = buildBar(storePercent, BAR_LENGTH);
-
-        System.out.printf(
-                "CPU     [ %s ] %d%% (%d cores)%n" +
-                        "Memory  [ %s ] %.2f/%.2f GB%n" +
-                        "Storage [ %s ] %d GB / %d GB%n",
-                cpuBar, cpuPercent, cpuCores,
-                memBar, usedMem, maxMem,
-                storeBar, usedStore, totalStore
-        );
-    }
-
-    private static String buildBar(int percent, int length) {
-        int filled = (percent * length) / 100;
-        StringBuilder bar = new StringBuilder();
-        for (int i = 0; i < filled; i++) bar.append("|");
-        for (int i = filled; i < length; i++) bar.append(" ");
-        return bar.toString();
-    }
-
-    /**
      * Handles the 'generate_token' command. Generates a new token with the specified
      * name, optional permissions, and optional secret. If no secret is provided,
      * a random secret is generated.
@@ -311,7 +299,7 @@ public class CommandConsole implements Runnable {
                 Arrays.asList(permArg.split(","));
 
         try {
-            AccessToken token = tokenService.createToken(name, permissions, secret);
+            tokenService.createToken(name, permissions, secret);
             if (!silent) {
                 LOGGER.info("New token for \"{}\" [{}] with permissions: {}", name, secret, permissions);
             }

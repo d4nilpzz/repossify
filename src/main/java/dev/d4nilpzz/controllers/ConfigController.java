@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
 import io.javalin.Javalin;
@@ -20,8 +19,8 @@ import java.util.Set;
 
 public class ConfigController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigController.class);
-    private static final Path PAGE_CONFIG_PATH = Paths.get(Repossify.WORKING_DIR+"/page.json");
-    private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
+    private static final Path PAGE_CONFIG_PATH = Paths.get(Repossify.WORKING_DIR + "/page.json");
+    private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final TokenService tokenService;
@@ -30,10 +29,33 @@ public class ConfigController {
         this.tokenService = tokenService;
     }
 
+    private static Set<String> extractRepoNames(ObjectNode config) {
+        Set<String> names = new HashSet<>();
+        JsonNode repos = config.get("repositories");
+
+        if (repos != null && repos.isArray()) {
+            for (JsonNode repo : repos) {
+                if (repo.has("name")) {
+                    String name = repo.get("name").asText();
+                    if (!name.isEmpty()) {
+                        names.add(name);
+                    }
+                }
+            }
+        }
+        return names;
+    }
+
+    private static boolean isEmptyDirectory(Path dir) throws Exception {
+        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
+            return !ds.iterator().hasNext();
+        }
+    }
+
     public void registerRoutes(Javalin app) {
         app.put("/api/config/update", ctx -> {
 
-            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/config/update", tokenService);
+            AuthRoute.requireManagerOrWrite(ctx, "/api/config/update", tokenService);
 
             ObjectNode oldConfig = (ObjectNode) mapper.readTree(PAGE_CONFIG_PATH.toFile());
             ObjectNode newConfig = oldConfig.deepCopy();
@@ -74,28 +96,5 @@ public class ConfigController {
 
             ctx.json(newConfig);
         });
-    }
-
-    private static Set<String> extractRepoNames(ObjectNode config) {
-        Set<String> names = new HashSet<>();
-        JsonNode repos = config.get("repositories");
-
-        if (repos != null && repos.isArray()) {
-            for (JsonNode repo : repos) {
-                if (repo.has("name")) {
-                    String name = repo.get("name").asText();
-                    if (!name.isEmpty()) {
-                        names.add(name);
-                    }
-                }
-            }
-        }
-        return names;
-    }
-
-    private static boolean isEmptyDirectory(Path dir) throws Exception {
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
-            return !ds.iterator().hasNext();
-        }
     }
 }

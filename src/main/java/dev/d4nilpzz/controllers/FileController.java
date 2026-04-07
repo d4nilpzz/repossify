@@ -1,7 +1,6 @@
 package dev.d4nilpzz.controllers;
 
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AccessToken;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.utils.MavenUtils;
@@ -16,11 +15,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 public class FileController {
 
-    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR+"/repos");
+    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
     private final TokenService tokenService;
 
     public FileController(TokenService tokenService) {
@@ -34,7 +34,7 @@ public class FileController {
         app.get("/repo/*", this::handleFileView);
 
         app.put("/repo/*", ctx -> {
-            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
+            AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
             handleMavenPut(ctx);
         });
 
@@ -42,7 +42,7 @@ public class FileController {
     }
 
     private void handleMavenPut(Context ctx) throws IOException {
-        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
+        AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
 
         String fullPath = ctx.path();
         String prefix = "/repo/";
@@ -154,7 +154,7 @@ public class FileController {
         }
 
         String filePath = fullPath.substring(prefix.length());
-        final Path BASE_PATH_VIEW = Paths.get(Repossify.WORKING_DIR+"/repos").toAbsolutePath().normalize();
+        final Path BASE_PATH_VIEW = Paths.get(Repossify.WORKING_DIR + "/repos").toAbsolutePath().normalize();
         Path target = BASE_PATH_VIEW.resolve(filePath).normalize();
 
         if (!target.startsWith(BASE_PATH_VIEW) || !Files.exists(target) || Files.isDirectory(target)) {
@@ -184,7 +184,7 @@ public class FileController {
 
 
     private void handleFileUpload(Context ctx) throws IOException {
-        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/file/upload", tokenService);
+        AuthRoute.requireManagerOrWrite(ctx, "/api/file/upload", tokenService);
 
         String repo = ctx.formParam("repo");
         String path = ctx.formParam("path");
@@ -206,7 +206,7 @@ public class FileController {
             return;
         }
 
-        Path targetDir = BASE_PATH.resolve(repo).resolve(path);
+        Path targetDir = BASE_PATH.resolve(Objects.requireNonNull(repo)).resolve(Objects.requireNonNull(path));
         Files.createDirectories(targetDir);
 
         Path targetFile = targetDir.resolve(file.filename());
@@ -214,8 +214,8 @@ public class FileController {
 
         Path artifactBase = BASE_PATH
                 .resolve(repo)
-                .resolve(groupId.replace('.', '/'))
-                .resolve(artifactId);
+                .resolve(Objects.requireNonNull(groupId).replace('.', '/'))
+                .resolve(Objects.requireNonNull(artifactId));
 
         Files.createDirectories(artifactBase);
 
@@ -233,7 +233,7 @@ public class FileController {
 
         if (generatePom) {
             Path pomPath = artifactBase
-                    .resolve(version)
+                    .resolve(Objects.requireNonNull(version))
                     .resolve(artifactId + "-" + version + ".pom");
 
             Files.createDirectories(pomPath.getParent());
@@ -251,7 +251,7 @@ public class FileController {
     }
 
     private void handleDeletePath(Context ctx) throws IOException {
-        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/file/delete", tokenService);
+        AuthRoute.requireManagerOrWrite(ctx, "/api/file/delete", tokenService);
 
         String repo = ctx.queryParam("repo");
         String path = ctx.queryParam("path");
@@ -284,7 +284,8 @@ public class FileController {
                 .forEach(p -> {
                     try {
                         Files.delete(p);
-                    } catch (IOException ignored) {}
+                    } catch (IOException ignored) {
+                    }
                 });
 
         ctx.status(204);

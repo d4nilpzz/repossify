@@ -279,9 +279,9 @@ public class TokenService {
                     routeStmt.setInt(1, id);
                     ResultSet routeRs = routeStmt.executeQuery();
                     while (routeRs.next()) {
-                        AccessToken.Route r = new AccessToken.Route();
-                        r.path = routeRs.getString("path");
-                        r.routePermission = routeRs.getString("route_permission");
+                        String path = routeRs.getString("path");
+                        String routePermission = routeRs.getString("route_permission");
+                        AccessToken.Route r = new AccessToken.Route(path, routePermission);
                         routes.add(r);
                     }
 
@@ -295,8 +295,8 @@ public class TokenService {
     /**
      * Adds a route to an existing token.
      *
-     * @param tokenName the name of the token to add the route to
-     * @param path the path to add to the token's routes
+     * @param tokenName  the name of the token to add the route to
+     * @param path       the path to add to the token's routes
      * @param permission the permission required to access the route
      * @throws SQLException if a database error occurs
      */
@@ -323,8 +323,8 @@ public class TokenService {
      * Removes a route from an existing token.
      *
      * @param tokenName the name of the token
-     * @param path the path to remove from the token's routes
-     * @throws SQLException if a database error occurs
+     * @param path      the path to remove from the token's routes
+     * @throws SQLException             if a database error occurs
      * @throws IllegalArgumentException if token not found
      */
     public void removeRouteFromToken(String tokenName, String path) throws SQLException {

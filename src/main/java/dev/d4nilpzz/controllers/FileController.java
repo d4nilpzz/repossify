@@ -34,7 +34,7 @@ public class FileController {
         app.get("/repo/*", this::handleFileView);
 
         app.put("/repo/*", ctx -> {
-            AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
+            AuthRoute.requireManagerOrWrite(ctx, "/repo", tokenService);
             handleMavenPut(ctx);
         });
 
@@ -42,7 +42,7 @@ public class FileController {
     }
 
     private void handleMavenPut(Context ctx) throws IOException {
-        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
+        AuthRoute.requireManagerOrWrite(ctx, ctx.path(), tokenService);
 
         String fullPath = ctx.path();
         String prefix = "/repo/";
@@ -184,7 +184,7 @@ public class FileController {
 
 
     private void handleFileUpload(Context ctx) throws IOException {
-        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/file/upload", tokenService);
+        AuthRoute.requireManagerOrWrite(ctx, "/api/file/upload", tokenService);
 
         String repo = ctx.formParam("repo");
         String path = ctx.formParam("path");
@@ -251,7 +251,7 @@ public class FileController {
     }
 
     private void handleDeletePath(Context ctx) throws IOException {
-        AccessToken token = AuthRoute.requireManagerOrWrite(ctx, "/api/file/delete", tokenService);
+        AuthRoute.requireManagerOrWrite(ctx, "/api/file/delete", tokenService);
 
         String repo = ctx.queryParam("repo");
         String path = ctx.queryParam("path");

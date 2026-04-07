@@ -307,7 +307,7 @@ public class CommandConsole implements Runnable {
                 Arrays.asList(permArg.split(","));
 
         try {
-            AccessToken token = tokenService.createToken(name, permissions, secret);
+            tokenService.createToken(name, permissions, secret);
             if (!silent) {
                 LOGGER.info("New token for \"{}\" [{}] with permissions: {}", name, secret, permissions);
             }

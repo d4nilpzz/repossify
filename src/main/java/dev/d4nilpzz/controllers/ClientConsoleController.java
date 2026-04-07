@@ -5,8 +5,6 @@ import dev.d4nilpzz.auth.TokenService;
 import dev.d4nilpzz.console.ConsoleBridge;
 import io.javalin.Javalin;
 import io.javalin.websocket.WsContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

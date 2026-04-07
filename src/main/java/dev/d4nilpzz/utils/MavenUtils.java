@@ -58,10 +58,4 @@ public class MavenUtils {
                 .formatted(groupId, artifactId, latest, latest, lastUpdated, versionsXml)
                 .trim();
     }
-
-    public static Set<String> mergeVersions(Set<String> existing, String newVersion) {
-        Set<String> out = new TreeSet<>(existing);
-        out.add(newVersion);
-        return out;
-    }
 }

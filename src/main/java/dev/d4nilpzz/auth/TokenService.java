@@ -279,9 +279,9 @@ public class TokenService {
                     routeStmt.setInt(1, id);
                     ResultSet routeRs = routeStmt.executeQuery();
                     while (routeRs.next()) {
-                        AccessToken.Route r = new AccessToken.Route();
-                        r.path = routeRs.getString("path");
-                        r.routePermission = routeRs.getString("route_permission");
+                        String path = routeRs.getString("path");
+                        String routePermission = routeRs.getString("route_permission");
+                        AccessToken.Route r = new AccessToken.Route(path, routePermission);
                         routes.add(r);
                     }
 

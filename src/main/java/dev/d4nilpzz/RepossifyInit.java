@@ -7,11 +7,13 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.concurrent.TimeUnit;
 
 public class RepossifyInit {
     private static final Logger LOGGER = LoggerFactory.getLogger(RepossifyInit.class);
 
     private static final String[] DIRS = {
+            "content",
             "logs",
             "repos",
             "plugins",
@@ -60,7 +62,7 @@ public class RepossifyInit {
 
                 while (System.currentTimeMillis() - start < MIN_SPINNER_TIME) {
                     System.out.print("\rCopying " + targetPath + " " + SPINNER[i++ % SPINNER.length]);
-                    Thread.sleep(10);
+                    TimeUnit.MILLISECONDS.sleep(10);
                 }
 
                 System.out.print("\r");

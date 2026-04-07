@@ -54,7 +54,7 @@ public class AuthRoute {
 
         if (!isManager) {
             boolean hasWrite = token.routes.stream()
-                    .anyMatch(r -> route.startsWith(r.path) && r.routePermission.equalsIgnoreCase("w"));
+                    .anyMatch(r -> route.startsWith(r.path()) && r.routePermission().equalsIgnoreCase("w"));
 
             if (!hasWrite) throw new UnauthorizedResponse("Token does not have write permission for this route");
         }

@@ -17,7 +17,7 @@
   ·
   <a href="https://maven.repossify.dev">Demo</a>
   ·
-  <a href="https://discord.repossify.dev">Discord</a>
+  <a href="https://discord.gg/x2PuPKznA6">Discord</a>
 </div>
 
 ---

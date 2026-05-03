@@ -105,6 +105,7 @@ public class Repossify {
         new FileController(tokenService).registerRoutes(app);
 
         new ClientConsoleController(tokenService, new ConsoleBridge(new CommandConsole(tokenService))).registerRoutes(app);
+        new MetricsController(tokenService).registerRoutes(app);
 
         new Thread(new CommandConsole(tokenService), "console").start();
 

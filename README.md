@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/a169a480-df2f-4099-aec0-97c1f03040a6" alt="MAS Logo" width="120" height="120">
+  <img src="https://github.com/user-attachments/assets/5375de6f-35ea-4b1b-a232-5f177977a3a4" alt="MAS Logo" width="120" height="120">
 </p>
 
 <h1 align="center">Repossify</h1>

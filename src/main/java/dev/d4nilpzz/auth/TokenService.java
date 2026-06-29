@@ -327,6 +327,22 @@ public class TokenService {
      * @throws SQLException             if a database error occurs
      * @throws IllegalArgumentException if token not found
      */
+    /**
+     * If no tokens exist, creates a default admin token with MANAGER permission
+     * and returns its plaintext secret. Returns null if tokens already exist.
+     */
+    public String bootstrapAdminIfEmpty() throws SQLException {
+        try (Connection conn = DriverManager.getConnection(dbUrl);
+             Statement stmt = conn.createStatement()) {
+            ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM access_tokens");
+            if (rs.next() && rs.getInt(1) > 0) return null;
+        }
+
+        String secret = UUID.randomUUID().toString().replace("-", "");
+        createToken("admin", List.of("MANAGER"), secret);
+        return secret;
+    }
+
     public void removeRouteFromToken(String tokenName, String path) throws SQLException {
         try (Connection conn = DriverManager.getConnection(dbUrl)) {
             PreparedStatement psId = conn.prepareStatement("SELECT id FROM access_tokens WHERE name=?");

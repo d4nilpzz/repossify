@@ -79,6 +79,19 @@ public class Repossify {
         try {
             Path dbPath = WORKING_DIR.resolve("repossify.db");
             tokenService = new TokenService("jdbc:sqlite:" + dbPath.toAbsolutePath());
+
+            String adminSecret = tokenService.bootstrapAdminIfEmpty();
+            if (adminSecret != null) {
+                LOGGER.warn("╔══════════════════════════════════════════════════╗");
+                LOGGER.warn("║         REPOSSIFY FIRST-TIME SETUP               ║");
+                LOGGER.warn("║                                                  ║");
+                LOGGER.warn("║  Admin token created:                            ║");
+                LOGGER.warn("║  Name   : admin                                  ║");
+                LOGGER.warn("║  Secret : {}  ║", adminSecret);
+                LOGGER.warn("║                                                  ║");
+                LOGGER.warn("║  Save this secret — it won't be shown again.     ║");
+                LOGGER.warn("╚══════════════════════════════════════════════════╝");
+            }
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
             return;

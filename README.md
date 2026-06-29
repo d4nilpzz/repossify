@@ -14,8 +14,6 @@
   ·
   <a href="https://repossify.dev/docs/">Official Guide</a>
   ·
-  <a href="https://github.com/d4nilpzz/maven-repossify/releases">GitHub Releases</a>
-  ·
   <a href="https://maven.repossify.dev">Demo</a>
   ·
   <a href="https://discord.gg/x2PuPKznA6">Discord</a>

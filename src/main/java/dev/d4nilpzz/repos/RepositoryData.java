@@ -69,7 +69,7 @@ public class RepositoryData {
 
     public static List<Repository> loadRepositories() throws IOException {
         List<Repository> repos = new ArrayList<>();
-        File reposDir = new File(Repossify.WORKING_DIR + "/repos");
+        File reposDir = new File(Repossify.WORKING_DIR + "/repositories");
 
         if (!reposDir.exists() || !reposDir.isDirectory()) {
             return repos;

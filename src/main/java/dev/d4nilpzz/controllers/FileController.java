@@ -3,6 +3,7 @@ package dev.d4nilpzz.controllers;
 import dev.d4nilpzz.Repossify;
 import dev.d4nilpzz.auth.AuthRoute;
 import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.utils.ChecksumUtils;
 import dev.d4nilpzz.utils.MavenUtils;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
@@ -13,6 +14,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Objects;
@@ -20,7 +23,7 @@ import java.util.Set;
 
 public class FileController {
 
-    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
+    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repositories");
     private final TokenService tokenService;
 
     public FileController(TokenService tokenService) {
@@ -69,6 +72,13 @@ public class FileController {
 
         String filename = target.getFileName().toString();
 
+        // Skip checksum files themselves to avoid infinite recursion
+        boolean isChecksumFile = filename.endsWith(".md5") || filename.endsWith(".sha1") || filename.endsWith(".sha256");
+
+        if (!isChecksumFile) {
+            ChecksumUtils.writeChecksums(target);
+        }
+
         if (
                 filename.endsWith(".jar") ||
                         filename.endsWith(".war") ||
@@ -96,13 +106,29 @@ public class FileController {
                 versions.add(version);
 
                 Path metadataFile = artifactBase.resolve("maven-metadata.xml");
+                String metadataContent = MavenUtils.generateMavenMetadata(groupId, artifactId, versions);
                 Files.writeString(
                         metadataFile,
-                        MavenUtils.generateMavenMetadata(groupId, artifactId, versions),
+                        metadataContent,
                         StandardCharsets.UTF_8,
                         StandardOpenOption.CREATE,
                         StandardOpenOption.TRUNCATE_EXISTING
                 );
+                ChecksumUtils.writeChecksums(metadataFile);
+
+                // SNAPSHOT: generate per-version snapshot metadata
+                if (version.endsWith("-SNAPSHOT")) {
+                    String timestamp = LocalDateTime.now()
+                            .format(DateTimeFormatter.ofPattern("yyyyMMdd.HHmmss"));
+                    int buildNumber = resolveNextBuildNumber(artifactBase.resolve(version));
+                    Path snapshotMetadata = artifactBase.resolve(version).resolve("maven-metadata.xml");
+                    Files.createDirectories(snapshotMetadata.getParent());
+                    String snapshotContent = MavenUtils.generateSnapshotMetadata(
+                            groupId, artifactId, version, timestamp, buildNumber);
+                    Files.writeString(snapshotMetadata, snapshotContent, StandardCharsets.UTF_8,
+                            StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+                    ChecksumUtils.writeChecksums(snapshotMetadata);
+                }
 
                 // generar pom solo si no existe
                 Path pomPath = artifactBase
@@ -117,6 +143,7 @@ public class FileController {
                             StandardCharsets.UTF_8,
                             StandardOpenOption.CREATE
                     );
+                    ChecksumUtils.writeChecksums(pomPath);
                 }
             }
         }
@@ -154,7 +181,7 @@ public class FileController {
         }
 
         String filePath = fullPath.substring(prefix.length());
-        final Path BASE_PATH_VIEW = Paths.get(Repossify.WORKING_DIR + "/repos").toAbsolutePath().normalize();
+        final Path BASE_PATH_VIEW = Paths.get(Repossify.WORKING_DIR + "/repositories").toAbsolutePath().normalize();
         Path target = BASE_PATH_VIEW.resolve(filePath).normalize();
 
         if (!target.startsWith(BASE_PATH_VIEW) || !Files.exists(target) || Files.isDirectory(target)) {
@@ -212,6 +239,14 @@ public class FileController {
         Path targetFile = targetDir.resolve(file.filename());
         Files.copy(file.content(), targetFile, StandardCopyOption.REPLACE_EXISTING);
 
+        String uploadedFilename = targetFile.getFileName().toString();
+        boolean isChecksumUpload = uploadedFilename.endsWith(".md5")
+                || uploadedFilename.endsWith(".sha1")
+                || uploadedFilename.endsWith(".sha256");
+        if (!isChecksumUpload) {
+            ChecksumUtils.writeChecksums(targetFile);
+        }
+
         Path artifactBase = BASE_PATH
                 .resolve(repo)
                 .resolve(Objects.requireNonNull(groupId).replace('.', '/'))
@@ -230,6 +265,7 @@ public class FileController {
                 StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING
         );
+        ChecksumUtils.writeChecksums(metadataFile);
 
         if (generatePom) {
             Path pomPath = artifactBase
@@ -245,6 +281,7 @@ public class FileController {
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING
             );
+            ChecksumUtils.writeChecksums(pomPath);
         }
 
         ctx.status(201);
@@ -303,5 +340,20 @@ public class FileController {
             }
         }
         return versions;
+    }
+
+    private int resolveNextBuildNumber(Path versionDir) {
+        if (!Files.exists(versionDir)) return 1;
+        Path meta = versionDir.resolve("maven-metadata.xml");
+        if (!Files.exists(meta)) return 1;
+        try {
+            String content = Files.readString(meta);
+            int start = content.indexOf("<buildNumber>") + 13;
+            int end = content.indexOf("</buildNumber>", start);
+            if (start > 12 && end > start) {
+                return Integer.parseInt(content.substring(start, end).trim()) + 1;
+            }
+        } catch (Exception ignored) {}
+        return 1;
     }
 }

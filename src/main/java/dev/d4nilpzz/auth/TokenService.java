@@ -339,7 +339,7 @@ public class TokenService {
         }
 
         String secret = UUID.randomUUID().toString().replace("-", "");
-        createToken("admin", List.of("MANAGER"), secret);
+        createToken("admin", List.of("M"), secret);
         return secret;
     }
 

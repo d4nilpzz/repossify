@@ -12,6 +12,7 @@ public class AccessToken {
     public final String description;
     public final List<String> permissions; // MANAGER (m), UPLOADER (u)
     public final List<Route> routes;
+    public final boolean isManager;
 
     public AccessToken(int id, String type, String name, String secret, String description,
                        List<String> permissions, List<Route> routes) {
@@ -23,6 +24,8 @@ public class AccessToken {
         this.createdAt = Instant.now().toString();
         this.permissions = permissions;
         this.routes = routes;
+        this.isManager = permissions.stream()
+                .anyMatch(p -> p.equalsIgnoreCase("M") || p.equalsIgnoreCase("MANAGER"));
     }
 
     public record Route(String path, String routePermission) { // READ (r), WRITE (w)

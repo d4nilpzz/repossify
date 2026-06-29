@@ -15,10 +15,10 @@ public class RepossifyInit {
     private static final String[] DIRS = {
             "content",
             "logs",
-            "repos",
+            "repositories",
             "plugins",
-            "repos/private",
-            "repos/releases"
+            "repositories/private",
+            "repositories/releases"
     };
 
     private static final String[][] FILES_TO_COPY = {

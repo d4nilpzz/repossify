@@ -65,7 +65,7 @@ public class PageController {
     private List<RepositoryData.Repository> loadRepositoriesWithPrivacy() throws Exception {
         List<RepositoryData.Repository> repos = new ArrayList<>();
 
-        File reposDir = new File(Repossify.WORKING_DIR + "/repos");
+        File reposDir = new File(Repossify.WORKING_DIR + "/repositories");
 
         if (!reposDir.exists() || !reposDir.isDirectory()) return repos;
 

@@ -12,7 +12,7 @@ import java.util.Comparator;
 
 public class BadgeController {
 
-    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
+    private static final Path BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repositories");
 
     public BadgeController(Javalin app) {
         app.get("/api/badge/latest/{type}/{channel}/{owner}/{repo}", this::handleLatest);

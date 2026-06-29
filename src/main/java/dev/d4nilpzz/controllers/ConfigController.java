@@ -20,7 +20,7 @@ import java.util.Set;
 public class ConfigController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigController.class);
     private static final Path PAGE_CONFIG_PATH = Paths.get(Repossify.WORKING_DIR + "/page.json");
-    private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repos");
+    private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repositories");
     private static final ObjectMapper mapper = new ObjectMapper();
 
     private final TokenService tokenService;

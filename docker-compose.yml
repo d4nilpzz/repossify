@@ -1,0 +1,11 @@
+services:
+  repossify:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - repossify-data:/data
+    restart: unless-stopped
+
+volumes:
+  repossify-data:

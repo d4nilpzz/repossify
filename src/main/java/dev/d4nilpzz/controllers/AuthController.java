@@ -83,13 +83,5 @@ public class AuthController {
             ctx.json(token);
         });
 
-        app.post("/api/setup/init", ctx -> {
-            String secret = tokenService.bootstrapAdminIfEmpty();
-            if (secret == null) {
-                ctx.status(409).result("Already initialized");
-                return;
-            }
-            ctx.json(java.util.Map.of("name", "admin", "secret", secret));
-        });
     }
 }

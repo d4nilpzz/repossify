@@ -1,18 +1,13 @@
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM maven:3.9-eclipse-temurin-21-alpine AS builder
+WORKDIR /build
+COPY pom.xml .
+RUN mvn dependency:go-offline -q
+COPY src ./src
+RUN mvn package -DskipTests -q
 
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-
-COPY target/repossify-*.jar repossify.jar
-
-RUN mkdir -p /data/repos /data/logs /data/content
-
+COPY --from=builder /build/target/repossify-*.jar repossify.jar
 VOLUME /data
-
-ENV REPOSSIFY_WORKING_DIR=/data
-ENV REPOSSIFY_HOST=0.0.0.0
-ENV REPOSSIFY_PORT=8080
-
 EXPOSE 8080
-
-ENTRYPOINT ["java", "-jar", "repossify.jar"]
-CMD ["--hostname", "0.0.0.0", "--port", "8080", "--working-directory", "/data"]
+CMD ["java", "-jar", "repossify.jar", "--working-directory", "/data"]

@@ -1,100 +1,126 @@
 package dev.d4nilpzz.controllers;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AuthRoute;
-import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.auth.AuthService;
+import dev.d4nilpzz.config.ConfigService;
+import dev.d4nilpzz.repos.ProxyService;
+import dev.d4nilpzz.repos.RepositoryData;
+import dev.d4nilpzz.repos.RepositoryService;
+import dev.d4nilpzz.repos.StatisticsService;
 import io.javalin.Javalin;
+import io.javalin.http.BadRequestResponse;
+import io.javalin.http.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.regex.Pattern;
 
+/**
+ * Reads and writes {@code page.json} (dashboard settings and repository definitions) and
+ * exposes the server configuration.
+ */
 public class ConfigController {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ConfigController.class);
-    private static final Path PAGE_CONFIG_PATH = Paths.get(Repossify.WORKING_DIR + "/page.json");
-    private static final Path REPOS_BASE_PATH = Paths.get(Repossify.WORKING_DIR + "/repositories");
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final TokenService tokenService;
+    /** Repository names become directory names, so they are restricted to a safe alphabet. */
+    private static final Pattern REPOSITORY_NAME = Pattern.compile("^[a-z0-9][a-z0-9._-]{0,63}$");
 
-    public ConfigController(TokenService tokenService) {
-        this.tokenService = tokenService;
-    }
+    private final AuthService authService;
+    private final RepositoryService repositoryService;
+    private final ConfigService configService;
+    private final ProxyService proxyService;
+    private final StatisticsService statisticsService;
 
-    private static Set<String> extractRepoNames(ObjectNode config) {
-        Set<String> names = new HashSet<>();
-        JsonNode repos = config.get("repositories");
-
-        if (repos != null && repos.isArray()) {
-            for (JsonNode repo : repos) {
-                if (repo.has("name")) {
-                    String name = repo.get("name").asText();
-                    if (!name.isEmpty()) {
-                        names.add(name);
-                    }
-                }
-            }
-        }
-        return names;
-    }
-
-    private static boolean isEmptyDirectory(Path dir) throws Exception {
-        try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir)) {
-            return !ds.iterator().hasNext();
-        }
+    public ConfigController(AuthService authService,
+                            RepositoryService repositoryService,
+                            ConfigService configService,
+                            ProxyService proxyService,
+                            StatisticsService statisticsService) {
+        this.authService = authService;
+        this.repositoryService = repositoryService;
+        this.configService = configService;
+        this.proxyService = proxyService;
+        this.statisticsService = statisticsService;
     }
 
     public void registerRoutes(Javalin app) {
-        app.put("/api/config/update", ctx -> {
+        app.put("/api/config/update", this::handleUpdate);
+        app.get("/api/config/server", ctx -> {
+            authService.requireManager(ctx);
+            ctx.json(configService.current());
+        });
+    }
 
-            AuthRoute.requireManagerOrWrite(ctx, "/api/config/update", tokenService);
+    private void handleUpdate(Context ctx) throws Exception {
+        // Editing repositories, visibility and mirrors is administrative. This used to accept
+        // any token with a write route whose prefix covered /api, which let a deploy token
+        // reconfigure the server.
+        authService.requireManager(ctx);
 
-            ObjectNode oldConfig = (ObjectNode) mapper.readTree(PAGE_CONFIG_PATH.toFile());
-            ObjectNode newConfig = oldConfig.deepCopy();
-            JsonNode updates = ctx.bodyAsClass(JsonNode.class);
+        RepositoryData incoming = MAPPER.readValue(ctx.body(), RepositoryData.class);
+        RepositoryData current = repositoryService.config();
 
-            if (!updates.isObject()) {
-                ctx.status(400).result("Invalid JSON body");
-                return;
+        Set<String> previousNames = new HashSet<>();
+        current.repositories.forEach(repository -> previousNames.add(repository.name));
+
+        RepositoryData merged = new RepositoryData();
+        merged.title = firstNonNull(incoming.title, current.title);
+        merged.author = firstNonNull(incoming.author, current.author);
+        merged.group_id = firstNonNull(incoming.group_id, current.group_id);
+        merged.description = firstNonNull(incoming.description, current.description);
+        merged.avatar_url = firstNonNull(incoming.avatar_url, current.avatar_url);
+        merged.domain_url = firstNonNull(incoming.domain_url, current.domain_url);
+        merged.links = incoming.links != null ? incoming.links : current.links;
+        merged.repositories = incoming.repositories != null ? incoming.repositories : current.repositories;
+
+        validateRepositories(merged);
+
+        // The dashboard sends back the whole payload it received, including the file tree.
+        // Persisting that would grow page.json to the size of the repository; saveConfig
+        // drops it, but validating first keeps the error messages meaningful.
+        repositoryService.saveConfig(merged);
+        repositoryService.syncDirectories(previousNames);
+        proxyService.reset();
+
+        // Statistics are keyed by repository name, so a removed repository would otherwise
+        // keep contributing rows that no longer correspond to anything.
+        Set<String> remaining = new HashSet<>();
+        merged.repositories.forEach(repository -> remaining.add(repository.name));
+        for (String removed : previousNames) {
+            if (!remaining.contains(removed)) statisticsService.purge(removed);
+        }
+
+        LOGGER.info("Configuration updated by {}", ctx.ip());
+        ctx.json(merged);
+    }
+
+    private void validateRepositories(RepositoryData data) {
+        Set<String> seen = new HashSet<>();
+
+        for (RepositoryData.Repository repository : data.repositories) {
+            if (repository.name == null || !REPOSITORY_NAME.matcher(repository.name).matches()) {
+                throw new BadRequestResponse("Invalid repository name: '" + repository.name +
+                        "'. Use lowercase letters, digits, dot, dash or underscore.");
             }
-
-            updates.fields().forEachRemaining(e ->
-                    newConfig.set(e.getKey(), e.getValue())
-            );
-
-            Set<String> oldRepos = extractRepoNames(oldConfig);
-            Set<String> newRepos = extractRepoNames(newConfig);
-
-            for (String repo : newRepos) {
-                Path repoPath = REPOS_BASE_PATH.resolve(repo);
-                if (!Files.exists(repoPath)) {
-                    Files.createDirectories(repoPath);
-                }
+            if (!seen.add(repository.name)) {
+                throw new BadRequestResponse("Duplicate repository name: " + repository.name);
             }
-
-            for (String repo : oldRepos) {
-                if (!newRepos.contains(repo)) {
-                    Path repoPath = REPOS_BASE_PATH.resolve(repo);
-                    if (Files.exists(repoPath) && isEmptyDirectory(repoPath)) {
-                        Files.delete(repoPath);
+            if (repository.proxied != null) {
+                for (RepositoryData.Proxy proxy : repository.proxied) {
+                    if (proxy.url == null || !(proxy.url.startsWith("http://") || proxy.url.startsWith("https://"))) {
+                        throw new BadRequestResponse("Mirror URL must be http or https: " + proxy.url);
                     }
                 }
             }
+            repository.normalize();
+        }
+    }
 
-            mapper.writerWithDefaultPrettyPrinter()
-                    .writeValue(PAGE_CONFIG_PATH.toFile(), newConfig);
-
-            LOGGER.info("{} updated the config", ctx.ip());
-
-            ctx.json(newConfig);
-        });
+    private static String firstNonNull(String first, String second) {
+        return first != null ? first : second;
     }
 }

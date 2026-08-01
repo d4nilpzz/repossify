@@ -4,7 +4,7 @@
   "group_id": "com.example",
   "description": "A powerful maven repository.",
   "avatar_url": "/public/repossify.png",
-  "domain_url": "http://localhost:8090/",
+  "domain_url": "http://localhost:8080/",
   "links": [
     {
       "url": "https://github.com/d4nilpzz/repossify",
@@ -16,13 +16,28 @@
       "name": "releases",
       "path": "/releases",
       "isPrivate": false,
-      "tree": []
+      "visibility": "PUBLIC",
+      "redeployment": false,
+      "preserveSnapshots": 0,
+      "proxied": []
+    },
+    {
+      "name": "snapshots",
+      "path": "/snapshots",
+      "isPrivate": false,
+      "visibility": "PUBLIC",
+      "redeployment": true,
+      "preserveSnapshots": 5,
+      "proxied": []
     },
     {
       "name": "private",
       "path": "/private",
       "isPrivate": true,
-      "tree": []
+      "visibility": "PRIVATE",
+      "redeployment": false,
+      "preserveSnapshots": 0,
+      "proxied": []
     }
   ]
 }

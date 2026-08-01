@@ -40,3 +40,6 @@ build/
 repossify.properties
 repossify.db
 page.json
+configuration.json
+/content/
+/repositories/

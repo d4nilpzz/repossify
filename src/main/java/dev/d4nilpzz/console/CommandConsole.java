@@ -2,93 +2,48 @@ package dev.d4nilpzz.console;
 
 import com.sun.management.OperatingSystemMXBean;
 import dev.d4nilpzz.Repossify;
+import dev.d4nilpzz.auth.AccessToken;
+import dev.d4nilpzz.auth.RoutePermission;
 import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.http.PathSafety;
+import dev.d4nilpzz.repos.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
- * CommandConsole provides an interactive command-line interface for managing
- * Repossify tokens and server control. Supports token creation, deletion,
- * modification, renaming, secret regeneration, and server commands.
+ * Interactive administration console, available both on stdin and through the dashboard's
+ * terminal tab.
  */
 public class CommandConsole implements Runnable {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(CommandConsole.class);
     private static final int BAR_LENGTH = 50;
+
     private final TokenService tokenService;
+    private final RepositoryService repositoryService;
+    private final MetadataService metadataService;
+    private final GarbageCollector garbageCollector;
+    private final StatisticsService statisticsService;
+
     private volatile boolean running = true;
 
-    /**
-     * Constructs a CommandConsole instance with the given TokenService.
-     *
-     * @param tokenService service handling token operations in the database
-     */
-    public CommandConsole(TokenService tokenService) {
+    public CommandConsole(TokenService tokenService,
+                          RepositoryService repositoryService,
+                          MetadataService metadataService,
+                          GarbageCollector garbageCollector,
+                          StatisticsService statisticsService) {
         this.tokenService = tokenService;
+        this.repositoryService = repositoryService;
+        this.metadataService = metadataService;
+        this.garbageCollector = garbageCollector;
+        this.statisticsService = statisticsService;
     }
 
-    /**
-     * Processes a single console command, parses its arguments,
-     * and dispatches execution to the corresponding handler.
-     */
-    private static void performance() {
-        Runtime rt = Runtime.getRuntime();
-        OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-
-        // CPU: medir % usado por el proceso respetando cores limitados
-        int cpuCores = Math.min(rt.availableProcessors(), 2); // ActiveProcessorCount=2
-        double cpuUsage = 0.0;
-        try {
-            long startTime = System.nanoTime();
-            long startCpu = os.getProcessCpuTime();
-            Thread.sleep(100); // breve espera
-            long endTime = System.nanoTime();
-            long endCpu = os.getProcessCpuTime();
-            cpuUsage = (endCpu - startCpu) / (double) (endTime - startTime) / 1_000_000_000.0 / cpuCores;
-            cpuUsage = Math.min(cpuUsage, 1.0); // máximo 100%
-        } catch (Exception ignored) {
-        }
-        int cpuPercent = (int) Math.round(cpuUsage * 100);
-        String cpuBar = buildBar(cpuPercent);
-
-        // Memoria de la JVM en GB
-        double usedMem = (rt.totalMemory() - rt.freeMemory()) / 1024.0 / 1024.0 / 1024.0;
-        double maxMem = rt.maxMemory() / 1024.0 / 1024.0 / 1024.0;
-        int memPercent = maxMem == 0 ? 0 : (int) ((usedMem * 100) / maxMem);
-        String memBar = buildBar(memPercent);
-
-        String currentDir = System.getProperty("user.dir");
-        File jarDrive = new File(currentDir).getAbsoluteFile().toPath().getRoot().toFile();
-        long totalStore = jarDrive.getTotalSpace() / 1024 / 1024 / 1024; // GB
-        long usedStore = (totalStore - jarDrive.getUsableSpace() / 1024 / 1024 / 1024); // GB
-        int storePercent = totalStore == 0 ? 0 : (int) ((usedStore * 100) / totalStore);
-        String storeBar = buildBar(storePercent);
-
-        System.out.printf(
-                "CPU     [ %s ] %d%% (%d cores)%n" +
-                        "Memory  [ %s ] %.2f/%.2f GB%n" +
-                        "Storage [ %s ] %d GB / %d GB%n",
-                cpuBar, cpuPercent, cpuCores,
-                memBar, usedMem, maxMem,
-                storeBar, usedStore, totalStore
-        );
-    }
-
-    private static String buildBar(int percent) {
-        int filled = (percent * CommandConsole.BAR_LENGTH) / 100;
-        StringBuilder bar = new StringBuilder();
-        bar.repeat("|", Math.max(0, filled));
-        bar.repeat(" ", Math.max(0, CommandConsole.BAR_LENGTH - filled));
-        return bar.toString();
-    }
-
-    /**
-     * Starts the interactive console, reading commands from the standard input.
-     * Runs until the "stop" command is issued.
-     */
     @Override
     public void run() {
         Scanner scanner = new Scanner(System.in);
@@ -96,180 +51,72 @@ public class CommandConsole implements Runnable {
 
         while (running) {
             System.out.print("> ");
-            String input = scanner.nextLine().trim();
-            handleCommand(input);
+            if (!scanner.hasNextLine()) break; // stdin closed, e.g. running detached
+            handleCommand(scanner.nextLine().trim());
         }
-
         scanner.close();
     }
 
-    /**
-     * Handles a single command input, parsing it and invoking the appropriate action.
-     *
-     * @param input raw command input from the user
-     */
-    void handleCommand(String input) {
-        if (input.isEmpty()) return;
+    public void handleCommand(String input) {
+        if (input == null || input.isEmpty()) return;
 
         String[] parts = input.split("\\s+");
         String command = parts[0].toLowerCase();
         String[] args = Arrays.copyOfRange(parts, 1, parts.length);
 
         switch (command) {
-            case "?":
-            case "help":
-                LOGGER.info("""
-                        Available commands:
-                        ➜ help or ?
-                        ➜ docs
-                        ➜ version
-                        ➜ generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
-                        ➜ delete_token <name>
-                        ➜ delete_all_tokens
-                        ➜ token_modify <name> <permissions>
-                        ➜ token_rename <oldName> <newName>
-                        ➜ token_regenerate <name>
-                        ➜ token_add_route <tokenName> <path> <r/w>
-                        ➜ token_remove_route <tokenName> <path>
-                        ➜ performance
-                        """);
-                break;
-            case "docs":
-                LOGGER.info("https://github.com/d4nilpzz/repossify/");
-                break;
+            case "?", "help" -> printHelp();
+            case "docs" -> LOGGER.info("https://repossify.dev/docs/");
+            case "version" -> LOGGER.info(Repossify.VERSION);
 
-            case "version":
-                LOGGER.info(Repossify.VERSION);
-                break;
+            case "generate_token" -> generateToken(args);
+            case "list_tokens" -> listTokens();
+            case "delete_token" -> deleteToken(args);
+            case "delete_all_tokens" -> deleteAllTokens();
+            case "token_modify" -> modifyToken(args);
+            case "token_rename" -> renameToken(args);
+            case "token_regenerate" -> regenerateToken(args);
+            case "token_add_route" -> addRoute(args);
+            case "token_remove_route" -> removeRoute(args);
 
-            case "generate_token":
-                generateToken(args);
-                break;
+            case "repositories" -> listRepositories();
+            case "repair_metadata" -> repairMetadata(args);
+            case "prune_snapshots" -> pruneSnapshots(args);
+            case "statistics", "stats" -> printStatistics();
 
-            case "delete_all_tokens":
-                try {
-                    tokenService.deleteAllTokens();
-                    LOGGER.info("All tokens have been deleted from the database!");
-                } catch (Exception e) {
-                    LOGGER.error("Error deleting all tokens: {}", e.getMessage());
-                }
+            case "performance" -> performance();
+            case "stop" -> stop();
 
-                break;
-
-            case "delete_token":
-                if (args.length < 1) {
-                    LOGGER.warn("Usage: delete_token <name>");
-                    break;
-                }
-
-                try {
-                    String tokenName = args[0];
-                    tokenService.deleteTokenByName(tokenName);
-                    LOGGER.info("Token '{}' has been deleted successfully.", tokenName);
-                } catch (Exception e) {
-                    LOGGER.error("Error deleting token: {}", e.getMessage());
-                }
-
-                break;
-
-            case "token_modify":
-                if (args.length < 2) {
-                    LOGGER.warn("Usage: token_modify <name> <permissions>");
-                    break;
-                }
-                try {
-                    String name = args[0];
-                    List<String> perms = Arrays.asList(args[1].split(","));
-                    tokenService.updateTokenPermissions(name, perms);
-                    LOGGER.info("Token '{}' permissions updated to: {}", name, perms);
-                } catch (Exception e) {
-                    LOGGER.error("Error modifying token: {}", e.getMessage());
-                }
-                break;
-
-            case "token_rename":
-                if (args.length < 2) {
-                    LOGGER.warn("Usage: token_rename <oldName> <newName>");
-                    break;
-                }
-
-                try {
-                    String oldName = args[0];
-                    String newName = args[1];
-                    tokenService.renameToken(oldName, newName);
-                    LOGGER.info("Token renamed from '{}' to '{}'", oldName, newName);
-                } catch (Exception e) {
-                    LOGGER.error("Error renaming token: {}", e.getMessage());
-                }
-                break;
-
-            case "token_regenerate":
-                if (args.length < 1) {
-                    LOGGER.warn("Usage: token_regenerate <name>");
-                    break;
-                }
-                try {
-                    String name = args[0];
-                    String newSecret = tokenService.regenerateTokenSecret(name);
-                    LOGGER.info("Token '{}' secret regenerated. New secret: {}", name, newSecret);
-                } catch (Exception e) {
-                    LOGGER.error("Error regenerating token: {}", e.getMessage());
-                }
-                break;
-
-            case "token_add_route":
-                if (args.length < 3) {
-                    LOGGER.warn("Usage: token_add_route <tokenName> <path> <r/w>");
-                    break;
-                }
-                try {
-                    String tokenName = args[0];
-                    String path = args[1];
-                    String routePerm = args[2].toLowerCase();
-
-                    if (!routePerm.equals("r") && !routePerm.equals("w")) {
-                        LOGGER.warn("Route permission must be 'r' or 'w'");
-                        break;
-                    }
-
-                    tokenService.addRouteToToken(tokenName, path, routePerm);
-                    LOGGER.info("Route '{}' added to token '{}' with permission '{}'", path, tokenName, routePerm);
-                } catch (Exception e) {
-                    LOGGER.error("Error adding route: {}", e.getMessage());
-                }
-                break;
-
-            case "token_remove_route":
-                if (args.length < 2) {
-                    LOGGER.warn("Usage: token_remove_route <tokenName> <path>");
-                    break;
-                }
-                try {
-                    String tokenName = args[0];
-                    String path = args[1];
-                    tokenService.removeRouteFromToken(tokenName, path);
-                    LOGGER.info("Route '{}' removed from token '{}'", path, tokenName);
-                } catch (Exception e) {
-                    LOGGER.error("Error removing route: {}", e.getMessage());
-                }
-                break;
-
-            case "performance":
-                performance();
-                break;
-
-            default:
-                LOGGER.warn("Unknown command. Type 'help' to see available commands.");
+            default -> LOGGER.warn("Unknown command. Type 'help' to see available commands.");
         }
     }
 
-    /**
-     * Handles the 'generate_token' command. Generates a new token with the specified
-     * name, optional permissions, and optional secret. If no secret is provided,
-     * a random secret is generated.
-     *
-     * @param args command arguments: <name> [<permissions>] [--secret=<secret>] [--silent]
-     */
+    private void printHelp() {
+        LOGGER.info("""
+                Available commands:
+                 - help or ?
+                 - docs
+                 - version
+                 - generate_token <name> [<permissions>] [--secret=<secret>] [--silent]
+                 - list_tokens
+                 - delete_token <name>
+                 - delete_all_tokens
+                 - token_modify <name> <permissions>
+                 - token_rename <oldName> <newName>
+                 - token_regenerate <name>
+                 - token_add_route <tokenName> <path> <r|w>
+                 - token_remove_route <tokenName> <path>
+                 - repositories
+                 - repair_metadata <repository|*>
+                 - prune_snapshots [<repository>]
+                 - statistics
+                 - performance
+                 - stop
+                """);
+    }
+
+    /* ===================== tokens ===================== */
+
     private void generateToken(String[] args) {
         if (args.length < 1) {
             LOGGER.warn("Usage: generate_token <name> [<permissions>] [--secret=<secret>] [--silent]");
@@ -277,7 +124,7 @@ public class CommandConsole implements Runnable {
         }
 
         String name = args[0];
-        String permArg = "";
+        String permissionArg = "";
         String secret = null;
         boolean silent = false;
 
@@ -287,16 +134,15 @@ public class CommandConsole implements Runnable {
             } else if (args[i].equalsIgnoreCase("--silent")) {
                 silent = true;
             } else {
-                permArg = args[i];
+                permissionArg = args[i];
             }
         }
 
-        if (secret == null || secret.isEmpty()) {
-            secret = UUID.randomUUID().toString().replace("-", "");
-        }
+        if (secret == null || secret.isEmpty()) secret = TokenService.generateSecret();
 
-        List<String> permissions = permArg.isEmpty() ? new ArrayList<>() :
-                Arrays.asList(permArg.split(","));
+        List<String> permissions = permissionArg.isEmpty()
+                ? new ArrayList<>()
+                : Arrays.asList(permissionArg.split(","));
 
         try {
             tokenService.createToken(name, permissions, secret);
@@ -308,5 +154,264 @@ public class CommandConsole implements Runnable {
         } catch (Exception e) {
             LOGGER.error("Unexpected error: {}", e.getMessage());
         }
+    }
+
+    private void listTokens() {
+        try {
+            List<AccessToken> tokens = tokenService.listTokens();
+            if (tokens.isEmpty()) {
+                LOGGER.info("No tokens defined.");
+                return;
+            }
+            LOGGER.info("{} token(s):", tokens.size());
+            for (AccessToken token : tokens) {
+                String routes = token.routes.isEmpty()
+                        ? "-"
+                        : token.routes.stream()
+                        .map(route -> route.path() + "(" + route.routePermission() + ")")
+                        .reduce((a, b) -> a + ", " + b).orElse("-");
+                LOGGER.info("  {} | permissions: {} | routes: {}",
+                        token.name, token.permissions.isEmpty() ? "-" : token.permissions, routes);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error listing tokens: {}", e.getMessage());
+        }
+    }
+
+    private void deleteToken(String[] args) {
+        if (args.length < 1) {
+            LOGGER.warn("Usage: delete_token <name>");
+            return;
+        }
+        try {
+            tokenService.deleteTokenByName(args[0]);
+            LOGGER.info("Token '{}' has been deleted successfully.", args[0]);
+        } catch (Exception e) {
+            LOGGER.error("Error deleting token: {}", e.getMessage());
+        }
+    }
+
+    private void deleteAllTokens() {
+        try {
+            tokenService.deleteAllTokens();
+            LOGGER.info("All tokens have been deleted. A new admin token is created on next start.");
+        } catch (Exception e) {
+            LOGGER.error("Error deleting all tokens: {}", e.getMessage());
+        }
+    }
+
+    private void modifyToken(String[] args) {
+        if (args.length < 2) {
+            LOGGER.warn("Usage: token_modify <name> <permissions>");
+            return;
+        }
+        try {
+            List<String> permissions = Arrays.asList(args[1].split(","));
+            tokenService.updateTokenPermissions(args[0], permissions);
+            LOGGER.info("Token '{}' permissions updated to: {}", args[0], permissions);
+        } catch (Exception e) {
+            LOGGER.error("Error modifying token: {}", e.getMessage());
+        }
+    }
+
+    private void renameToken(String[] args) {
+        if (args.length < 2) {
+            LOGGER.warn("Usage: token_rename <oldName> <newName>");
+            return;
+        }
+        try {
+            tokenService.renameToken(args[0], args[1]);
+            LOGGER.info("Token renamed from '{}' to '{}'", args[0], args[1]);
+        } catch (Exception e) {
+            LOGGER.error("Error renaming token: {}", e.getMessage());
+        }
+    }
+
+    private void regenerateToken(String[] args) {
+        if (args.length < 1) {
+            LOGGER.warn("Usage: token_regenerate <name>");
+            return;
+        }
+        try {
+            String secret = tokenService.regenerateTokenSecret(args[0]);
+            LOGGER.info("Token '{}' secret regenerated. New secret: {}", args[0], secret);
+        } catch (Exception e) {
+            LOGGER.error("Error regenerating token: {}", e.getMessage());
+        }
+    }
+
+    private void addRoute(String[] args) {
+        if (args.length < 3) {
+            LOGGER.warn("Usage: token_add_route <tokenName> <path> <r|w>");
+            return;
+        }
+        if (RoutePermission.parse(args[2]) == null) {
+            LOGGER.warn("Route permission must be 'r' or 'w'");
+            return;
+        }
+        try {
+            tokenService.addRouteToToken(args[0], args[1], args[2]);
+            LOGGER.info("Route '{}' added to token '{}' with permission '{}'", args[1], args[0], args[2]);
+        } catch (Exception e) {
+            LOGGER.error("Error adding route: {}", e.getMessage());
+        }
+    }
+
+    private void removeRoute(String[] args) {
+        if (args.length < 2) {
+            LOGGER.warn("Usage: token_remove_route <tokenName> <path>");
+            return;
+        }
+        try {
+            tokenService.removeRouteFromToken(args[0], args[1]);
+            LOGGER.info("Route '{}' removed from token '{}'", args[1], args[0]);
+        } catch (Exception e) {
+            LOGGER.error("Error removing route: {}", e.getMessage());
+        }
+    }
+
+    /* ===================== repositories ===================== */
+
+    private void listRepositories() {
+        List<RepositoryData.Repository> repositories = repositoryService.repositories();
+        if (repositories.isEmpty()) {
+            LOGGER.info("No repositories configured.");
+            return;
+        }
+        for (RepositoryData.Repository repository : repositories) {
+            LOGGER.info("  {} | {} | redeployment: {} | keep snapshots: {} | mirrors: {} | size: {}",
+                    repository.name,
+                    repository.resolvedVisibility(),
+                    repository.redeployment,
+                    repository.preserveSnapshots == 0 ? "all" : repository.preserveSnapshots,
+                    repository.proxied == null ? 0 : repository.proxied.size(),
+                    formatBytes(repositoryService.sizeOf(repository.name)));
+        }
+    }
+
+    /**
+     * Rebuilds metadata for a repository. Needed after copying artifacts in by hand, which
+     * is how most people migrate off another repository manager.
+     */
+    private void repairMetadata(String[] args) {
+        if (args.length < 1) {
+            LOGGER.warn("Usage: repair_metadata <repository|*>");
+            return;
+        }
+
+        List<RepositoryData.Repository> targets = "*".equals(args[0])
+                ? repositoryService.repositories()
+                : repositoryService.find(args[0]).map(List::of).orElse(List.of());
+
+        if (targets.isEmpty()) {
+            LOGGER.warn("Repository '{}' does not exist", args[0]);
+            return;
+        }
+
+        for (RepositoryData.Repository repository : targets) {
+            Path directory = PathSafety.resolveChild(repositoryService.root(), repository.name);
+            if (directory == null) continue;
+            try {
+                int written = metadataService.repairRepository(repositoryService.root(), directory);
+                repositoryService.invalidate(repository.name);
+                LOGGER.info("Rebuilt {} metadata file(s) in '{}'", written, repository.name);
+            } catch (Exception e) {
+                LOGGER.error("Error repairing '{}': {}", repository.name, e.getMessage());
+            }
+        }
+    }
+
+    private void pruneSnapshots(String[] args) {
+        try {
+            if (args.length == 0) {
+                LOGGER.info("Pruned {} stale snapshot file(s) across all repositories", garbageCollector.pruneAll());
+                return;
+            }
+            Optional<RepositoryData.Repository> repository = repositoryService.find(args[0]);
+            if (repository.isEmpty()) {
+                LOGGER.warn("Repository '{}' does not exist", args[0]);
+                return;
+            }
+            LOGGER.info("Pruned {} stale snapshot file(s) in '{}'",
+                    garbageCollector.pruneRepository(repository.get()), args[0]);
+        } catch (Exception e) {
+            LOGGER.error("Error pruning snapshots: {}", e.getMessage());
+        }
+    }
+
+    private void printStatistics() {
+        try {
+            StatisticsService.Summary summary = statisticsService.summary();
+            LOGGER.info("Total resolutions: {} across {} artifact(s)",
+                    summary.totalDownloads(), summary.uniqueArtifacts());
+            summary.perRepository().forEach((repository, count) ->
+                    LOGGER.info("  {} : {}", repository, count));
+
+            List<StatisticsService.Entry> top = statisticsService.top(5);
+            if (!top.isEmpty()) {
+                LOGGER.info("Most resolved:");
+                top.forEach(entry ->
+                        LOGGER.info("  {} {} : {}", entry.repository(), entry.path(), entry.downloads()));
+            }
+        } catch (Exception e) {
+            LOGGER.error("Error reading statistics: {}", e.getMessage());
+        }
+    }
+
+    /* ===================== host ===================== */
+
+    private void performance() {
+        Runtime runtime = Runtime.getRuntime();
+        OperatingSystemMXBean os = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+
+        int cpuCores = runtime.availableProcessors();
+        double cpuUsage = 0.0;
+        try {
+            long startTime = System.nanoTime();
+            long startCpu = os.getProcessCpuTime();
+            Thread.sleep(100);
+            long endTime = System.nanoTime();
+            long endCpu = os.getProcessCpuTime();
+            cpuUsage = (endCpu - startCpu) / (double) (endTime - startTime) / cpuCores;
+            cpuUsage = Math.min(cpuUsage, 1.0);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        int cpuPercent = (int) Math.round(cpuUsage * 100);
+        double usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024.0 / 1024 / 1024;
+        double maxMemory = runtime.maxMemory() / 1024.0 / 1024 / 1024;
+        int memoryPercent = maxMemory == 0 ? 0 : (int) ((usedMemory * 100) / maxMemory);
+
+        File volume = Repossify.WORKING_DIR.toFile();
+        long totalStore = volume.getTotalSpace() / 1024 / 1024 / 1024;
+        long usedStore = totalStore - volume.getUsableSpace() / 1024 / 1024 / 1024;
+        int storePercent = totalStore == 0 ? 0 : (int) ((usedStore * 100) / totalStore);
+
+        System.out.printf(
+                "CPU     [ %s ] %d%% (%d cores)%n" +
+                        "Memory  [ %s ] %.2f/%.2f GB%n" +
+                        "Storage [ %s ] %d GB / %d GB%n",
+                buildBar(cpuPercent), cpuPercent, cpuCores,
+                buildBar(memoryPercent), usedMemory, maxMemory,
+                buildBar(storePercent), usedStore, totalStore);
+    }
+
+    private void stop() {
+        LOGGER.info("Shutting down...");
+        running = false;
+        System.exit(0);
+    }
+
+    private static String buildBar(int percent) {
+        int filled = Math.clamp((percent * BAR_LENGTH) / 100, 0, BAR_LENGTH);
+        return "|".repeat(filled) + " ".repeat(BAR_LENGTH - filled);
+    }
+
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f kB", bytes / 1024.0);
+        if (bytes < 1024L * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
     }
 }

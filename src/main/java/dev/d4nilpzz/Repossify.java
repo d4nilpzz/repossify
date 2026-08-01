@@ -1,27 +1,31 @@
 package dev.d4nilpzz;
 
 import dev.d4nilpzz.auth.TokenService;
-import dev.d4nilpzz.console.CommandConsole;
-import dev.d4nilpzz.console.ConsoleBridge;
-import dev.d4nilpzz.controllers.*;
+import dev.d4nilpzz.config.ConfigService;
+import dev.d4nilpzz.config.ServerConfig;
 import dev.d4nilpzz.params.ParamParser;
+import dev.d4nilpzz.params.RepossifyHelp;
 import dev.d4nilpzz.utils.RepossifyBanner;
-import io.javalin.Javalin;
-import io.javalin.http.staticfiles.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+/**
+ * Entry point: parses the command line, prepares the working directory and hands over to
+ * {@link RepossifyServer}.
+ */
 public class Repossify {
-    public static final String VERSION = "1.0.0";
+
+    public static final String VERSION = "1.1.0";
     private static final Logger LOGGER = LoggerFactory.getLogger(Repossify.class);
     private static final String[] AUTHORS = {"d4nilpzz"};
 
     public static Path WORKING_DIR = Paths.get("./").toAbsolutePath().normalize();
+
+    /** Retained for compatibility; the effective limit lives in {@link ServerConfig}. */
     public static Long MAX_REQUEST_SIZE = 150_000_000L;
 
     public static void main(String[] args) {
@@ -29,99 +33,71 @@ public class Repossify {
         ParamParser.parse(args, parsed);
 
         if (parsed.version) {
-            LOGGER.info("Repossify {}", VERSION);
+            System.out.println("Repossify " + VERSION);
+            return;
+        }
+        if (parsed.help) {
+            RepossifyHelp.print(RepossifyArgs.class);
             return;
         }
 
         RepossifyBanner.print(VERSION, AUTHORS);
 
-        if (parsed.maxRequestSize != null) {
-            MAX_REQUEST_SIZE = Long.parseLong(parsed.maxRequestSize);
-            LOGGER.info("MaxRequestSize has change to: {}", MAX_REQUEST_SIZE);
-        }
-
         if (parsed.workingDirectory != null) {
             WORKING_DIR = Paths.get(parsed.workingDirectory).toAbsolutePath().normalize();
         }
-
         LOGGER.info("Working directory: {}", WORKING_DIR);
 
-        Path db = WORKING_DIR.resolve("repossify.db");
-        Path page = WORKING_DIR.resolve("page.json");
+        boolean missingLayout = Files.notExists(WORKING_DIR.resolve("repossify.db"))
+                || Files.notExists(WORKING_DIR.resolve("page.json"));
 
-        if (Files.notExists(db) || Files.notExists(page)) {
-            LOGGER.info("Missing files detected, running init...");
+        if (parsed.init || missingLayout) {
+            if (missingLayout && !parsed.init) LOGGER.info("Missing files detected, running init...");
             RepossifyInit.init(WORKING_DIR);
+            if (parsed.init) {
+                LOGGER.info("Initialization finished.");
+                return;
+            }
         }
 
-        run(parsed);
+        try {
+            start(parsed);
+        } catch (Exception e) {
+            LOGGER.error("Repossify failed to start: {}", e.getMessage(), e);
+        }
     }
 
-    private static void run(RepossifyArgs args) {
-        int port = 8080;
-        String hostname;
+    private static void start(RepossifyArgs args) throws Exception {
+        ConfigService configService = new ConfigService(WORKING_DIR);
+        ServerConfig config = configService.withOverrides(args);
+        MAX_REQUEST_SIZE = config.maxRequestSize;
 
-        if (args.port != null) {
-            port = Integer.parseInt(args.port);
-        }
+        RepossifyServer server = new RepossifyServer(WORKING_DIR, config, configService);
+        announceBootstrapToken(server.tokenService());
+        server.start();
 
-        try {
-            hostname = InetAddress.getLocalHost().getHostAddress();
-        } catch (Exception e) {
-            hostname = "localhost";
-        }
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop, "repossify-shutdown"));
 
-        if (args.hostname != null) {
-            hostname = args.hostname;
-        }
+        Thread consoleThread = new Thread(server.console(), "console");
+        consoleThread.setDaemon(true);
+        consoleThread.start();
 
-        TokenService tokenService;
-        try {
-            Path dbPath = WORKING_DIR.resolve("repossify.db");
-            tokenService = new TokenService("jdbc:sqlite:" + dbPath.toAbsolutePath());
+        LOGGER.info("Repossify {} running on http://{}:{}", VERSION, config.hostname, server.port());
+        if (config.ssl.enabled) LOGGER.info("HTTPS listening on port {}", config.ssl.port);
+    }
 
-            String adminSecret = tokenService.bootstrapAdminIfEmpty();
-            if (adminSecret != null) {
-                LOGGER.warn("╔══════════════════════════════════════════════════╗");
-                LOGGER.warn("║         REPOSSIFY FIRST-TIME SETUP               ║");
-                LOGGER.warn("║                                                  ║");
-                LOGGER.warn("║  Admin token created:                            ║");
-                LOGGER.warn("║  Name   : admin                                  ║");
-                LOGGER.warn("║  Secret : {}  ║", adminSecret);
-                LOGGER.warn("║                                                  ║");
-                LOGGER.warn("║  Save this secret — it won't be shown again.     ║");
-                LOGGER.warn("╚══════════════════════════════════════════════════╝");
-            }
-        } catch (Exception e) {
-            LOGGER.error(e.getMessage());
-            return;
-        }
+    private static void announceBootstrapToken(TokenService tokenService) throws Exception {
+        String adminSecret = tokenService.bootstrapAdminIfEmpty();
+        if (adminSecret == null) return;
 
-        Javalin app = Javalin.create(cfg -> {
-            cfg.staticFiles.add("/static");
-            cfg.showJavalinBanner = false;
-            cfg.http.maxRequestSize = MAX_REQUEST_SIZE;
-
-            cfg.staticFiles.add(staticFiles -> {
-                staticFiles.hostedPath = "/content";
-                staticFiles.directory = WORKING_DIR.resolve("content").toString();
-                staticFiles.location = Location.EXTERNAL;
-            });
-        }).start(port);
-
-        LOGGER.info("Repossify started on port: {}", port);
-
-        new BadgeController(app);
-        new PageController(tokenService).registerRoutes(app);
-        new ConfigController(tokenService).registerRoutes(app);
-        new AuthController(tokenService).registerRoutes(app);
-        new FileController(tokenService).registerRoutes(app);
-
-        new ClientConsoleController(tokenService, new ConsoleBridge(new CommandConsole(tokenService))).registerRoutes(app);
-        new MetricsController(tokenService).registerRoutes(app);
-
-        new Thread(new CommandConsole(tokenService), "console").start();
-
-        LOGGER.info("Running on http://{}:{}", hostname, port);
+        LOGGER.warn("+--------------------------------------------------------+");
+        LOGGER.warn("|              REPOSSIFY FIRST-TIME SETUP                |");
+        LOGGER.warn("|                                                        |");
+        LOGGER.warn("|  A manager token was created:                          |");
+        LOGGER.warn("|    name   : admin                                      |");
+        LOGGER.warn("|    secret : {}", adminSecret);
+        LOGGER.warn("|                                                        |");
+        LOGGER.warn("|  Save it now; it is not stored in recoverable form.    |");
+        LOGGER.warn("+--------------------------------------------------------+");
     }
 }

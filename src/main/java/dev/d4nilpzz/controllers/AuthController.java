@@ -1,87 +1,79 @@
 package dev.d4nilpzz.controllers;
 
 import dev.d4nilpzz.auth.AccessToken;
-import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.auth.AuthService;
 import io.javalin.Javalin;
+import io.javalin.http.Context;
 import io.javalin.http.Cookie;
+import io.javalin.http.SameSite;
 import io.javalin.http.UnauthorizedResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class AuthController {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
-    private static final String SESSION_COOKIE = "repossify_session";
-    private static final int SESSION_TTL_SECONDS = 60 * 30;
+    private static final int SESSION_TTL_SECONDS = 60 * 60 * 8;
 
-    private final TokenService tokenService;
+    private final AuthService authService;
 
-    public AuthController(TokenService tokenService) {
-        this.tokenService = tokenService;
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
     public void registerRoutes(Javalin app) {
-        app.before(ctx -> {
-            String secret = null;
-
-            String authHeader = ctx.header("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                secret = authHeader.substring("Bearer ".length());
-            }
-
-            if (secret == null) {
-                secret = ctx.cookie(SESSION_COOKIE);
-            }
-
-            if (secret == null) return;
-
-            AccessToken token = tokenService.getTokenBySecret(secret);
-            if (token != null) {
-                ctx.attribute("token", token);
-            }
-        });
-
         app.post("/api/auth/signin", ctx -> {
-            String authHeader = ctx.header("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                throw new UnauthorizedResponse("Missing token");
-            }
+            String secret = bearerOf(ctx);
+            if (secret == null) throw new UnauthorizedResponse("Sign in requires a Bearer token");
 
-            String secret = authHeader.substring("Bearer ".length());
-            AccessToken token = tokenService.getTokenBySecret(secret);
-            if (token == null) {
-                LOGGER.warn("{} tried to sign in with invalid token.", ctx.ip());
+            AccessToken token = authService.resolve(ctx).orElseThrow(() -> {
+                LOGGER.warn("{} tried to sign in with invalid credentials", ctx.ip());
+                return new UnauthorizedResponse("Invalid token");
+            });
 
-                throw new UnauthorizedResponse("Invalid token");
-            }
-
-            Cookie cookie = new Cookie(SESSION_COOKIE, secret);
-            cookie.setHttpOnly(true);
-            cookie.setPath("/");
-            cookie.setMaxAge(SESSION_TTL_SECONDS);
-
-            LOGGER.info("New session opened by {}", ctx.ip());
-            ctx.cookie(cookie);
+            ctx.cookie(sessionCookie(ctx, secret, SESSION_TTL_SECONDS));
+            LOGGER.info("Session opened for '{}' from {}", token.name, ctx.ip());
             ctx.json(token);
         });
 
         app.post("/api/auth/signout", ctx -> {
-            AccessToken token = ctx.attribute("token");
-            if (token == null) {
-                throw new UnauthorizedResponse("No active session");
-            }
-
-            ctx.removeCookie(SESSION_COOKIE);
-            ctx.json("Signed out");
+            // Overwritten rather than removed so the attributes match the cookie that was
+            // set; a browser ignores a deletion whose flags differ from the original.
+            ctx.cookie(sessionCookie(ctx, "", 0));
+            ctx.json(java.util.Map.of("message", "Signed out"));
         });
 
         app.get("/api/auth/me", ctx -> {
-            AccessToken token = ctx.attribute("token");
-            if (token == null) {
-                throw new UnauthorizedResponse("Not signed in");
-            }
-
+            AccessToken token = authService.resolve(ctx)
+                    .orElseThrow(() -> new UnauthorizedResponse("Not signed in"));
             ctx.json(token);
         });
+    }
 
+    private Cookie sessionCookie(Context ctx, String value, int maxAge) {
+        Cookie cookie = new Cookie(AuthService.SESSION_COOKIE, value);
+        cookie.setHttpOnly(true);
+        cookie.setPath("/");
+        cookie.setMaxAge(maxAge);
+        cookie.setSameSite(SameSite.STRICT);
+        // Only marked Secure over HTTPS: a Secure cookie is dropped outright on plain HTTP,
+        // which would break every local and HTTP reverse-proxied deployment.
+        cookie.setSecure(isSecure(ctx));
+        return cookie;
+    }
+
+    private boolean isSecure(Context ctx) {
+        if ("https".equalsIgnoreCase(ctx.scheme())) return true;
+        String forwarded = ctx.header("X-Forwarded-Proto");
+        return forwarded != null && forwarded.toLowerCase().startsWith("https");
+    }
+
+    private String bearerOf(Context ctx) {
+        String header = ctx.header("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            String secret = header.substring("Bearer ".length()).trim();
+            return secret.isEmpty() ? null : secret;
+        }
+        return null;
     }
 }

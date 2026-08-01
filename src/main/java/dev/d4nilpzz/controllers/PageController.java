@@ -1,135 +1,93 @@
 package dev.d4nilpzz.controllers;
 
 import dev.d4nilpzz.Repossify;
-import dev.d4nilpzz.auth.AuthRoute;
-import dev.d4nilpzz.auth.TokenService;
+import dev.d4nilpzz.auth.AuthService;
+import dev.d4nilpzz.auth.RoutePermission;
 import dev.d4nilpzz.repos.RepositoryData;
+import dev.d4nilpzz.repos.RepositoryService;
+import dev.d4nilpzz.repos.Visibility;
 import io.javalin.Javalin;
-import io.javalin.http.ContentType;
 import io.javalin.http.Context;
 
-import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public class PageController {
-    private final TokenService tokenService;
 
-    public PageController(TokenService tokenService) {
-        this.tokenService = tokenService;
+    private final AuthService authService;
+    private final RepositoryService repositoryService;
+
+    public PageController(AuthService authService, RepositoryService repositoryService) {
+        this.authService = authService;
+        this.repositoryService = repositoryService;
     }
 
     public void registerRoutes(Javalin app) {
-        app.get("/", ctx -> {
-            try (InputStream is = getClass().getResourceAsStream("/static/index.html")) {
-                ctx.contentType("text/html");
-                assert is != null;
-                ctx.result(new String(is.readAllBytes(), StandardCharsets.UTF_8));
-            }
-        });
-
+        app.get("/", this::serveIndex);
         app.get("/api/page/content", this::handlePageContent);
+        app.get("/api/version", ctx -> ctx.json(java.util.Map.of("version", Repossify.VERSION)));
     }
 
-    private void handlePageContent(Context ctx) {
-        try {
-            RepositoryData data = RepositoryData.loadPageConfig();
-            data.repositories = loadRepositoriesWithPrivacy();
-
-            boolean logged = true;
-            try {
-                AuthRoute.requireManagerOrWrite(ctx, "/api/page/content", tokenService);
-            } catch (Exception e) {
-                logged = false;
+    private void serveIndex(Context ctx) throws Exception {
+        try (InputStream stream = getClass().getResourceAsStream("/static/index.html")) {
+            if (stream == null) {
+                ctx.status(500).result("Dashboard assets are missing from this build");
+                return;
             }
-
-            if (!logged) {
-                data.repositories = data.repositories.stream()
-                        .filter(repo -> !repo.isPrivate)
-                        .toList();
-            }
-
-            ctx.contentType(ContentType.APPLICATION_JSON);
-            ctx.json(data);
-        } catch (Exception e) {
-            ctx.status(500).result("{\"error\":\"Cannot load page or repos\"}");
+            ctx.contentType("text/html");
+            ctx.result(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
         }
     }
 
+    /**
+     * Page configuration plus the repository trees the caller is allowed to see.
+     * <p>
+     * The trees come from {@link RepositoryService}, which caches them; this endpoint used
+     * to walk every file in every repository on each request.
+     */
+    private void handlePageContent(Context ctx) throws Exception {
+        RepositoryData config = repositoryService.config();
+        RepositoryData response = new RepositoryData();
 
-    private List<RepositoryData.Repository> loadRepositoriesWithPrivacy() throws Exception {
-        List<RepositoryData.Repository> repos = new ArrayList<>();
+        response.title = config.title;
+        response.author = config.author;
+        response.group_id = config.group_id;
+        response.description = config.description;
+        response.avatar_url = config.avatar_url;
+        response.domain_url = config.domain_url;
+        response.links = config.links;
+        response.repositories = new ArrayList<>();
 
-        File reposDir = new File(Repossify.WORKING_DIR + "/repositories");
+        boolean manager = authService.resolve(ctx).map(token -> token.isManager).orElse(false);
 
-        if (!reposDir.exists() || !reposDir.isDirectory()) return repos;
+        for (RepositoryData.Repository repository : config.repositories) {
+            Visibility visibility = repository.resolvedVisibility();
+            boolean readable = visibility.allowsAnonymousListing()
+                    || authService.canAccess(ctx, "/repo/" + repository.name, RoutePermission.READ);
+            if (!readable) continue;
 
-        File[] files = reposDir.listFiles(File::isDirectory);
-        if (files == null) return repos;
+            RepositoryData.Repository view = new RepositoryData.Repository();
+            view.name = repository.name;
+            view.path = repository.path;
+            view.visibility = visibility.name();
+            view.isPrivate = visibility == Visibility.PRIVATE;
+            view.tree = repositoryService.tree(repository.name);
 
-        RepositoryData pageConfig = RepositoryData.loadPageConfig();
+            // Deployment policy is operational detail; only managers need it in the UI.
+            if (manager) {
+                view.redeployment = repository.redeployment;
+                view.preserveSnapshots = repository.preserveSnapshots;
+                view.storageQuota = repository.storageQuota;
+                view.proxied = repository.proxied;
+            } else {
+                view.proxied = List.of();
+            }
 
-        for (File repoDir : files) {
-            RepositoryData.Repository repo = new RepositoryData.Repository();
-            repo.name = repoDir.getName();
-            repo.path = "/" + repoDir.getName();
-            repo.tree = loadRepoTree(repoDir.toPath(), repoDir.toPath(), "/" + repoDir.getName());
-
-            RepositoryData.Repository savedRepo = pageConfig.repositories.stream()
-                    .filter(r -> r.name.equals(repo.name))
-                    .findFirst().orElse(null);
-
-            repo.isPrivate = savedRepo != null && savedRepo.isPrivate;
-
-            repos.add(repo);
+            response.repositories.add(view);
         }
 
-        return repos;
+        ctx.json(response);
     }
-
-
-    private List<RepositoryData.TreeNode> loadRepoTree(Path rootPath, Path currentPath, String basePath) throws Exception {
-        List<RepositoryData.TreeNode> nodes = new ArrayList<>();
-        if (!Files.exists(currentPath) || !Files.isDirectory(currentPath)) return nodes;
-
-        Files.list(currentPath)
-                .sorted(Comparator.comparing(p -> p.getFileName().toString()))
-                .forEach(path -> {
-                    RepositoryData.TreeNode node = new RepositoryData.TreeNode();
-                    node.name = path.getFileName().toString();
-                    node.path = basePath + "/" + node.name;
-
-                    if (Files.isDirectory(path)) {
-                        node.type = "directory";
-                        try {
-                            node.children = loadRepoTree(rootPath, path, node.path);
-                        } catch (Exception e) {
-                            node.children = new ArrayList<>();
-                        }
-                        node.size = null;
-                        node.version = null;
-                        node.artifactId = null;
-                        node.groupId = null;
-                    } else {
-                        node.type = "file";
-                        node.size = path.toFile().length();
-                        node.children = null;
-
-                        if (node.name.endsWith(".jar") || node.name.endsWith(".pom")) {
-                            Path versionDir = path.getParent();
-                            node.version = versionDir.getFileName().toString();
-                        }
-                    }
-
-                    nodes.add(node);
-                });
-
-        return nodes;
-    }
-
 }

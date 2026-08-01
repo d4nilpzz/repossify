@@ -1,5 +1,6 @@
 package dev.d4nilpzz;
 
+import dev.d4nilpzz.config.ConfigService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,9 +8,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.concurrent.TimeUnit;
 
 public class RepossifyInit {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(RepossifyInit.class);
 
     private static final String[] DIRS = {
@@ -18,16 +19,14 @@ public class RepossifyInit {
             "repositories",
             "plugins",
             "repositories/private",
-            "repositories/releases"
+            "repositories/releases",
+            "repositories/snapshots"
     };
 
     private static final String[][] FILES_TO_COPY = {
             {"template/data/page.json", "page.json"},
             {"template/data/repossify.db", "repossify.db"}
     };
-
-    private static final char[] SPINNER = {'|', '/', '-', '\\'};
-    private static final long MIN_SPINNER_TIME = 100;
 
     public static void init(Path workingDir) {
         try {
@@ -39,38 +38,34 @@ public class RepossifyInit {
                 }
             }
 
-            ClassLoader cl = RepossifyInit.class.getClassLoader();
+            ClassLoader classLoader = RepossifyInit.class.getClassLoader();
 
             for (String[] filePair : FILES_TO_COPY) {
                 String resourcePath = filePair[0];
-                String targetPath = filePair[1];
+                Path target = workingDir.resolve(filePair[1]);
 
-                Path target = workingDir.resolve(targetPath);
+                // Never clobber existing data: init also runs when only one file is missing,
+                // and overwriting page.json would discard the operator's repository setup.
+                if (Files.exists(target)) {
+                    LOGGER.info("Keeping existing {}", filePair[1]);
+                    continue;
+                }
+
                 Files.createDirectories(target.getParent());
-
-                long start = System.currentTimeMillis();
-                int i = 0;
-
-                try (InputStream is = cl.getResourceAsStream(resourcePath)) {
-                    if (is == null) {
+                try (InputStream stream = classLoader.getResourceAsStream(resourcePath)) {
+                    if (stream == null) {
                         LOGGER.error("Resource not found: {}", resourcePath);
                         continue;
                     }
-
-                    Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(stream, target, StandardCopyOption.REPLACE_EXISTING);
                 }
-
-                while (System.currentTimeMillis() - start < MIN_SPINNER_TIME) {
-                    System.out.print("\rCopying " + targetPath + " " + SPINNER[i++ % SPINNER.length]);
-                    TimeUnit.MILLISECONDS.sleep(10);
-                }
-
-                System.out.print("\r");
-                LOGGER.info("File copied: {}", targetPath);
+                LOGGER.info("File created: {}", filePair[1]);
             }
 
-            LOGGER.info("Repossify initialized successfully.");
+            // Writes configuration.json with defaults when it does not exist yet.
+            new ConfigService(workingDir);
 
+            LOGGER.info("Repossify initialized successfully.");
         } catch (Exception e) {
             LOGGER.error("Error initializing Repossify", e);
         }
